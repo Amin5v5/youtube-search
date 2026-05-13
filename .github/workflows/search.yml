@@ -37,12 +37,14 @@ jobs:
           yt-dlp --flat-playlist --dump-json --playlist-end "$MAX" "$QUERY" | \
             jq -c '{title, webpage_url, thumbnail, duration, view_count, uploader}' > data.json
 
-      - name: ساخت اسکریپت Python
+      - name: ساخت صفحه HTML
+        env:
+          REPO: ${{ github.repository }}
         run: |
-          cat > generate_html.py << 'PYEOF'
+          python3 << 'EOF'
           import json, os, time
 
-          repo = "${{ github.repository }}"   # اینجا مستقیماً متغیر جایگزین می‌شه
+          repo = os.environ['REPO']
 
           with open('data.json', encoding='utf-8') as f:
               videos = [json.loads(line) for line in f]
@@ -133,10 +135,7 @@ jobs:
               f.write(full_html)
 
           print(f"✅ صفحه HTML ساخته شد. تعداد ویدیوها: {len(videos)}")
-          PYEOF
-
-      - name: اجرای اسکریپت و ساخت HTML
-        run: python3 generate_html.py
+          EOF
 
       - name: ذخیره و آپلود نتایج
         run: |
