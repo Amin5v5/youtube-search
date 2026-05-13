@@ -85,31 +85,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # ---------- کش بسته‌های apt (jq) ----------
-      - name: Cache apt packages (jq)
-        uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: jq
-          version: 1.0
+      - name: نصب ابزارها
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+          pip install yt-dlp
 
-      # ---------- کش pip (yt-dlp) ----------
-      - name: Cache pip packages
-        uses: actions/cache@v4
-        id: cache-pip
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-ytdlp-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-ytdlp-
-            ${{ runner.os }}-pip-
-
-      - name: نصب yt-dlp (در صورت عدم وجود کش)
-        if: steps.cache-pip.outputs.cache-hit != 'true'
-        run: pip install yt-dlp
-
-      # ---------- ساخت پارامترهای SP (بدون نصب مجدد) ----------
       - name: ساخت کد SP فیلترها
         run: |
+          # مپ کردن گزینه‌ها به پارامترهای sp یوتیوب
           declare -A UPLOAD_DATE_MAP=(
             ["any (همه)"]=""
             ["today (امروز)"]="EgIIAg%253D%253D"
@@ -147,12 +131,14 @@ jobs:
             ["rating (امتیاز)"]="CAE%253D"
           )
 
+          # دریافت مقادیر انتخاب‌شده
           UD="${{ github.event.inputs.upload_date }}"
           TYPE="${{ github.event.inputs.type_filter }}"
           DUR="${{ github.event.inputs.duration }}"
           FEAT="${{ github.event.inputs.features }}"
           SORT="${{ github.event.inputs.sort_by }}"
 
+          # ترکیب پارامترها (اولویت: آپلود > نوع > مدت > ویژگی > مرتب‌سازی)
           SP=""
           if [ -n "${UPLOAD_DATE_MAP[$UD]}" ]; then
             SP="${UPLOAD_DATE_MAP[$UD]}"
@@ -169,18 +155,19 @@ jobs:
           echo "SP=${SP}" >> $GITHUB_ENV
           echo "SParam: ${SP:-none}"
 
-      # ---------- دریافت اطلاعات از یوتیوب ----------
       - name: دریافت اطلاعات از یوتیوب
         run: |
           MAX=${{ github.event.inputs.max_results }}
           QUERY="${{ github.event.inputs.query }}"
           
+          # اگر کاربر ytsearch را ننوشته، خودکار اضافه کن
           if [[ ! "$QUERY" =~ ^ytsearch[0-9]*: ]]; then
             QUERY="ytsearch${MAX}:${QUERY}"
           fi
           
           echo "جستجو: $QUERY"
           
+          # اضافه کردن پارامترهای جستجو (sp) در صورت وجود
           EXTRA_ARGS=""
           if [ -n "$SP" ]; then
             EXTRA_ARGS="--extractor-args \"youtube:search_params=${SP}\""
@@ -188,13 +175,11 @@ jobs:
           
           eval "yt-dlp --flat-playlist --dump-json --playlist-end '$MAX' $EXTRA_ARGS '$QUERY' > data.json || echo '[]' > data.json"
 
-      # ---------- ساخت HTML ----------
       - name: اجرای اسکریپت ساخت HTML
         env:
           REPO: ${{ github.repository }}
         run: python3 generate_youtube_html.py
 
-      # ---------- ذخیره در history ----------
       - name: ذخیره در پوشه history
         run: |
           QUERY="${{ github.event.inputs.query }}"
@@ -232,14 +217,13 @@ jobs:
           echo "ذخیره در $DIR"
           echo "DIR=$DIR" >> $GITHUB_ENV
 
-      # ---------- نمایش لینک ----------
       - name: رمزگذاری مسیر و نمایش لینک به فایل این جستجو
         run: |
+          # اصلاح: safe='/' تا اسلش‌ها encode نشوند و لینک به درستی کار کند
           ENCODED_DIR=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${{ env.DIR }}', safe='/'))")
           echo "### 📁 فایل این جستجو:" >> $GITHUB_STEP_SUMMARY
           echo "[مشاهده فایل](https://github.com/${{ github.repository }}/blob/main/${ENCODED_DIR}/index.html)" >> $GITHUB_STEP_SUMMARY
 
-      # ---------- commit و push ----------
       - name: ذخیره و آپلود نتایج
         run: |
           git config user.name "github-actions[bot]"
