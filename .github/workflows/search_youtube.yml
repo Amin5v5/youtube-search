@@ -43,7 +43,7 @@ jobs:
           REPO: ${{ github.repository }}
         run: python3 generate_youtube_html.py
 
-      - name: ذخیره در پوشه history (مرتب‌شده با پایتون)
+      - name: ذخیره در پوشه history
         run: |
           QUERY="${{ github.event.inputs.query }}"
           DATE_PART=$(date +'%Y.%m.%d')
@@ -79,11 +79,11 @@ jobs:
           fi
           echo "ذخیره در $DIR"
 
-      # 🆕 مرحله جدید: نمایش لینک در Summary
-      - name: نمایش لینک به پوشه history
+      # 🆕 لینک مستقیم به فایل (نه پوشه) با عنوان "فایل این جستجو"
+      - name: نمایش لینک به فایل این جستجو
         run: |
-          echo "### 📁 پوشه تاریخچه این جستجو:" >> $GITHUB_STEP_SUMMARY
-          echo "[مشاهده پوشه](https://github.com/${{ github.repository }}/tree/main/$DIR)" >> $GITHUB_STEP_SUMMARY
+          echo "### 📁 فایل این جستجو:" >> $GITHUB_STEP_SUMMARY
+          echo "[مشاهده فایل](https://github.com/${{ github.repository }}/blob/main/$DIR/index.html)" >> $GITHUB_STEP_SUMMARY
 
       - name: ذخیره و آپلود نتایج
         run: |
