@@ -33,8 +33,9 @@ html_header = f'''<!DOCTYPE html>
         .meta {{ display: flex; justify-content: space-between; font-size: 0.8rem; color: #606060; }}
         .rating {{ color: #fbbc04; }}
         .install {{ color: #4285f4; }}
-        .copy-btn {{ background: none; border: none; cursor: pointer; font-size: 1rem; color: #606060; }}
-        .copy-btn:hover {{ color: #34a853; }}
+        .action-btns {{ display: flex; gap: 5px; margin-top: 5px; }}
+        .copy-btn, .download-btn {{ background: none; border: none; cursor: pointer; font-size: 1rem; color: #606060; }}
+        .copy-btn:hover, .download-btn:hover {{ color: #34a853; }}
         .footer {{ text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #888; font-size: 0.8rem; }}
         @media (max-width: 600px) {{ .results {{ grid-template-columns: 1fr; }} }}
     </style>
@@ -45,6 +46,12 @@ html_header = f'''<!DOCTYPE html>
             }}).catch(() => {{
                 prompt('لینک را کپی کنید:', url);
             }});
+        }}
+        function startDownload(appId) {{
+            // کپی Package Name و باز کردن صفحه اجرای workflow دانلود
+            copyLink(appId);
+            // TODO: آدرس مخزن دانلود را بعداً جایگزین کن
+            window.open('https://github.com/USERNAME/downloader/actions/workflows/download_apk.yml', '_blank');
         }}
     </script>
 </head>
@@ -57,7 +64,7 @@ html_header = f'''<!DOCTYPE html>
     <div class="results">'''
 
 if not apps:
-    no_result_card = '''<div style="grid-column: 1/-1; text-align: center; padding: 40px; font-size: 1.2rem; color: #666;">⚠️ هیچ نتیجه‌ای یافت نشد. لطفاً عبارت دیگری را امتحان کنید.</div>'''
+    no_result_card = '''<div style="grid-column: 1/-1; text-align: center; padding: 40px; font-size: 1.2rem; color: #666;">⚠️ هیچ نتیجه‌ای یافت نشد.</div>'''
     cards = [no_result_card]
 else:
     cards = []
@@ -68,8 +75,6 @@ else:
         installs = app.get('installs', 'نامشخص')
         app_id = app.get('appId', '')
         url = f"https://play.google.com/store/apps/details?id={app_id}" if app_id else "#"
-
-        # آیکون (base64)
         icon_url = app.get('icon', '')
         icon_b64 = None
         if icon_url:
@@ -95,6 +100,9 @@ else:
                 <div class="meta">
                     <span class="rating">⭐ {score}</span>
                     <span class="install">📥 {installs}</span>
+                </div>
+                <div class="action-btns">
+                    <button class="download-btn" onclick="startDownload('{app_id}')" title="دانلود APK">⬇️ دانلود</button>
                 </div>
             </div>
         </div>'''
