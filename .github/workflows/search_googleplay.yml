@@ -1,0 +1,71 @@
+name: 'جستجوی گوگل‌پلی با HTML'
+
+on:
+  workflow_dispatch:
+    inputs:
+      query:
+        description: 'عبارت جستجو (مثلاً: تلگرام)'
+        required: true
+        default: 'بازی'
+      max_results:
+        description: 'تعداد نتایج'
+        required: true
+        default: '10'
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: نصب ابزارها
+        run: pip install google-play-scraper
+
+      - name: دریافت اطلاعات از گوگل‌پلی
+        run: |
+          python3 << 'EOF'
+          import json, sys
+          from google_play_scraper import search
+
+          query = "${{ github.event.inputs.query }}"
+          max_results = int("${{ github.event.inputs.max_results }}")
+
+          try:
+              results = search(query, n_hits=max_results, lang='fa', country='ir')
+          except Exception as e:
+              print(f"خطا: {e}", file=sys.stderr)
+              results = []
+
+          # ذخیره به صورت JSON خط‌به‌خط
+          with open('data_play.json', 'w', encoding='utf-8') as f:
+              for app in results:
+                  f.write(json.dumps(app, ensure_ascii=False) + '\n')
+
+          print(f"✅ تعداد نتایج: {len(results)}")
+          EOF
+
+      - name: اجرای اسکریپت ساخت HTML
+        env:
+          REPO: ${{ github.repository }}
+        run: python3 generate_googleplay_html.py
+
+      - name: ذخیره در پوشه history
+        run: |
+          SANITIZED=$(echo "${{ github.event.inputs.query }}" | sed 's/[^a-zA-Z0-9آ-ی۰-۹]/_/g' | cut -c1-50)
+          TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
+          HIST_DIR="history/play_${SANITIZED}_${TIMESTAMP}"
+          mkdir -p "$HIST_DIR"
+          cp search_results/googleplay/index.html "$HIST_DIR/"
+          cp data_play.json "$HIST_DIR/"
+          echo "ذخیره در $HIST_DIR"
+
+      - name: ذخیره و آپلود نتایج
+        run: |
+          cp search_results/googleplay/index.html ./play_index.html
+          git config user.name "github-actions[bot]"
+          git config user.email "bot@github.com"
+          git add search_results/googleplay/index.html play_index.html data_play.json history/
+          git commit -m "نتایج جستجوی گوگل‌پلی: ${{ github.event.inputs.query }}" || echo "هیچ تغییری نبود"
+          git push
