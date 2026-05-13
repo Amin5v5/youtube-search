@@ -43,11 +43,23 @@ jobs:
           REPO: ${{ github.repository }}
         run: python3 generate_youtube_html.py
 
-      - name: ذخیره در پوشه history
+      - name: ذخیره در پوشه history (اصلاح‌شده با پایتون)
         run: |
-          CLEAN_QUERY=$(echo "${{ github.event.inputs.query }}" | sed -E 's/^ytsearch[0-9]*://')
-          SANITIZED=$(echo "$CLEAN_QUERY" | tr ' ' '_' | tr -cd 'a-zA-Z0-9آ-ی۰-۹_' | cut -c1-40)
+          QUERY="${{ github.event.inputs.query }}"
           DATE_PART=$(date +'%Y.%m.%d')
+          # پایتون: حذف پیشوند ytsearch و ساخت نام تمیز فارسی
+          SANITIZED=$(python3 -c "
+          import re, sys
+          q = sys.argv[1]
+          # حذف ytsearchN: از ابتدا
+          q = re.sub(r'^ytsearch\d*:', '', q)
+          # جایگزینی فاصله و کاراکترهای غیرمجاز با _
+          q = re.sub(r'[^\w\s]', '', q).strip()
+          q = re.sub(r'\s+', '_', q)
+          # محدود کردن طول
+          print(q[:40])
+          " "$QUERY")
+          
           BASE_DIR="history/YouTube/${DATE_PART} - ${SANITIZED}"
           DIR="$BASE_DIR"
           COUNTER=1
@@ -56,6 +68,7 @@ jobs:
             COUNTER=$((COUNTER + 1))
           done
           mkdir -p "$DIR"
+          
           if [ -f search_results/index.html ]; then
             cp search_results/index.html "$DIR/"
           else
