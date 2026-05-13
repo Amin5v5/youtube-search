@@ -43,20 +43,18 @@ jobs:
           REPO: ${{ github.repository }}
         run: python3 generate_youtube_html.py
 
-      - name: ذخیره در پوشه history (اصلاح‌شده با پایتون)
+      - name: ذخیره در پوشه history (مرتب‌شده با پایتون)
         run: |
           QUERY="${{ github.event.inputs.query }}"
           DATE_PART=$(date +'%Y.%m.%d')
-          # پایتون: حذف پیشوند ytsearch و ساخت نام تمیز فارسی
           SANITIZED=$(python3 -c "
           import re, sys
           q = sys.argv[1]
-          # حذف ytsearchN: از ابتدا
           q = re.sub(r'^ytsearch\d*:', '', q)
-          # جایگزینی فاصله و کاراکترهای غیرمجاز با _
           q = re.sub(r'[^\w\s]', '', q).strip()
           q = re.sub(r'\s+', '_', q)
-          # محدود کردن طول
+          if not q:
+              q = 'جستجو'
           print(q[:40])
           " "$QUERY")
           
@@ -80,6 +78,12 @@ jobs:
             echo "[]" > "$DIR/data.json"
           fi
           echo "ذخیره در $DIR"
+
+      # 🆕 مرحله جدید: نمایش لینک در Summary
+      - name: نمایش لینک به پوشه history
+        run: |
+          echo "### 📁 پوشه تاریخچه این جستجو:" >> $GITHUB_STEP_SUMMARY
+          echo "[مشاهده پوشه](https://github.com/${{ github.repository }}/tree/main/$DIR)" >> $GITHUB_STEP_SUMMARY
 
       - name: ذخیره و آپلود نتایج
         run: |
