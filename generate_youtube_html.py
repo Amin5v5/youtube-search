@@ -2,7 +2,6 @@ import json, os, time, base64, urllib.request
 
 repo = os.environ.get('REPO', '')
 
-# خواندن داده‌ها
 if not os.path.exists('data.json') or os.path.getsize('data.json') == 0:
     videos = []
 else:
@@ -47,7 +46,6 @@ html_header = f'''<!DOCTYPE html>
             }});
         }}
         function startDownload(url) {{
-            // کپی لینک و باز کردن صفحه اجرای workflow دانلود
             copyLink(url);
             window.open('https://github.com/{repo}/actions/workflows/youtube.yml', '_blank');
         }}
@@ -57,7 +55,7 @@ html_header = f'''<!DOCTYPE html>
 <div class="container">
     <h1>🎬 نتایج جستجو</h1>
     <div class="search-btn">
-        <a href="https://github.com/{repo}/actions/workflows/search.yml" target="_blank">➕ جستجوی جدید</a>
+        <a href="https://github.com/{repo}/actions/workflows/search_youtube.yml" target="_blank">➕ جستجوی جدید</a>
     </div>
     <div class="results">'''
 
@@ -67,7 +65,6 @@ if not videos:
 else:
     cards = []
     for v in videos:
-        # ---------- مدت زمان ----------
         dur_sec = v.get('duration', 0) or 0
         total_seconds = int(dur_sec)
         hours = total_seconds // 3600
@@ -78,11 +75,9 @@ else:
         else:
             duration_str = f"{minutes}:{seconds:02d}"
 
-        # ---------- تعداد بازدید ----------
         views = v.get('view_count', 0) or 0
         views_str = f"{views:,}" if views > 0 else "۰"
 
-        # ---------- تصویر (دانلود و تبدیل به base64) ----------
         thumb_url = ''
         if 'thumbnails' in v and isinstance(v['thumbnails'], list) and len(v['thumbnails']) > 0:
             thumb_url = v['thumbnails'][-1].get('url', '')
@@ -138,10 +133,6 @@ full_html = html_header + ''.join(cards) + html_footer
 
 os.makedirs('search_results', exist_ok=True)
 with open('search_results/index.html', 'w', encoding='utf-8') as f:
-    f.write(full_html)
-
-# کپی در ریشه برای GitHub Pages
-with open('index.html', 'w', encoding='utf-8') as f:
     f.write(full_html)
 
 print(f"✅ صفحه HTML ساخته شد. تعداد ویدیوها: {len(videos)}")
