@@ -46,6 +46,11 @@ jobs:
           print(f"✅ تعداد نتایج: {len(results)}")
           EOF
 
+      - name: بررسی فایل داده
+        run: |
+          echo "محتوای data_play.json:"
+          head -c 500 data_play.json || echo "فایل خالی است"
+
       - name: اجرای اسکریپت ساخت HTML
         env:
           REPO: ${{ github.repository }}
@@ -55,7 +60,7 @@ jobs:
         run: |
           SANITIZED=$(echo "${{ github.event.inputs.query }}" | sed 's/[^a-zA-Z0-9آ-ی۰-۹]/_/g' | cut -c1-50)
           TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
-          HIST_DIR="history/play_${SANITIZED}_${TIMESTAMP}"
+          HIST_DIR="history/googleplay/${SANITIZED}_${TIMESTAMP}"
           mkdir -p "$HIST_DIR"
           cp search_results/googleplay/index.html "$HIST_DIR/"
           cp data_play.json "$HIST_DIR/"
