@@ -16,14 +16,25 @@
         .card:hover { transform: translateY(-5px); }
         .thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; }
         .info { padding: 15px; }
-        .title { font-size: 1rem; font-weight: 600; margin-bottom: 8px; line-height: 1.4; }
-        .title a { text-decoration: none; color: #0f0f0f; }
+        .title { font-size: 1rem; font-weight: 600; margin-bottom: 8px; line-height: 1.4; display: flex; align-items: flex-start; gap: 8px; }
+        .title a { text-decoration: none; color: #0f0f0f; flex: 1; }
         .title a:hover { text-decoration: underline; color: #ff0000; }
+        .copy-btn { background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: 2px; color: #606060; transition: 0.2s; }
+        .copy-btn:hover { color: #ff0000; }
         .channel { color: #606060; font-size: 0.85rem; margin-bottom: 10px; }
         .details { display: flex; justify-content: space-between; font-size: 0.75rem; color: #606060; border-top: 1px solid #e5e5e5; padding-top: 10px; margin-top: 5px; }
         .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #888; font-size: 0.8rem; }
         @media (max-width: 600px) { .results { grid-template-columns: 1fr; } }
     </style>
+    <script>
+        function copyLink(url) {
+            navigator.clipboard.writeText(url).then(() => {
+                alert('لینک کپی شد!');
+            }).catch(() => {
+                prompt('لینک را کپی کنید:', url);
+            });
+        }
+    </script>
 </head>
 <body>
 <div class="container">
@@ -33,118 +44,148 @@
     </div>
     <div class="results">
         <div class="card">
-            <img class="thumb" src="https://placehold.co/320x180?text=No+Image" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
+            <img class="thumb" src="https://i.ytimg.com/vi/_Q_5q2T_QoA/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLDTTcFHdVqKF3helA7JAFcbtzhnEw" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
             <div class="info">
-                <div class="title"><a href="https://www.youtube.com/watch?v=EQwa-mZitJQ" target="_blank">جدیدترین روش برای دور زدن اینترنت ملی | رفع فیلترینگ اینترنت با VPN رایگان😃😍 فیلترشکن جدید رسید😃</a></div>
-                <div class="channel">DARIUSH PARS</div>
+                <div class="title">
+                    <a href="https://www.youtube.com/watch?v=_Q_5q2T_QoA" target="_blank">فیلم کمدی جدید جزایر قناری (بدون سانسور) با بازی پژمان جمشیدی، امیرمهدی ژوله و بیژن بنفشه خواه</a>
+                    <button class="copy-btn" onclick="copyLink('https://www.youtube.com/watch?v=_Q_5q2T_QoA')" title="کپی لینک">📋</button>
+                </div>
+                <div class="channel">TPM - Top Persian Movies</div>
                 <div class="details">
-                    <span>👁️ 935 بازدید</span>
-                    <span>⏱️ 8:20</span>
+                    <span>👁️ 356,109 بازدید</span>
+                    <span>⏱️ 1:18:27</span>
                 </div>
             </div>
         </div>
         <div class="card">
-            <img class="thumb" src="https://placehold.co/320x180?text=No+Image" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
+            <img class="thumb" src="https://i.ytimg.com/vi/EYAq7MkCzuM/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLAQES1pkWwlRySnbC51NZkGIcmCnA" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
             <div class="info">
-                <div class="title"><a href="https://www.youtube.com/watch?v=kBDTHLZO1aI" target="_blank">با این روش به اینترنت آزاد وصل شو💀 | هر گیمی هم که دلت خواست بازی کن😆</a></div>
-                <div class="channel">ARSHIA HUMBERT</div>
+                <div class="title">
+                    <a href="https://www.youtube.com/watch?v=EYAq7MkCzuM" target="_blank">پژمان جمشیدی و محسن کیایی در فیلم کمدی ناجورها | Najoorha Movie</a>
+                    <button class="copy-btn" onclick="copyLink('https://www.youtube.com/watch?v=EYAq7MkCzuM')" title="کپی لینک">📋</button>
+                </div>
+                <div class="channel">Televika</div>
                 <div class="details">
-                    <span>👁️ 9,608 بازدید</span>
-                    <span>⏱️ 23:27</span>
+                    <span>👁️ 65,477 بازدید</span>
+                    <span>⏱️ 1:18:54</span>
                 </div>
             </div>
         </div>
         <div class="card">
-            <img class="thumb" src="https://placehold.co/320x180?text=No+Image" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
+            <img class="thumb" src="https://i.ytimg.com/vi/JbTkZG5cVJ8/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLDjI38R3G-YyH58lBPlVVHblop4AA" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
             <div class="info">
-                <div class="title"><a href="https://www.youtube.com/watch?v=92BJ6BfAYHQ" target="_blank">چشم‌انداز: جهنم قطع اینترنت چگونه به پایان می‌رسد؟</a></div>
-                <div class="channel">Iran International ايران اينترنشنال</div>
+                <div class="title">
+                    <a href="https://www.youtube.com/watch?v=JbTkZG5cVJ8" target="_blank">فیلم سینمایی سالن 4  با بازی میلاد کی مرام | رازهایی که نباید فاش می‌شد! | Salon 4 - Full Movie</a>
+                    <button class="copy-btn" onclick="copyLink('https://www.youtube.com/watch?v=JbTkZG5cVJ8')" title="کپی لینک">📋</button>
+                </div>
+                <div class="channel">Honar Aval</div>
                 <div class="details">
-                    <span>👁️ 22,108 بازدید</span>
-                    <span>⏱️ 43:58</span>
+                    <span>👁️ 94,958 بازدید</span>
+                    <span>⏱️ 1:35:30</span>
                 </div>
             </div>
         </div>
         <div class="card">
-            <img class="thumb" src="https://placehold.co/320x180?text=No+Image" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
+            <img class="thumb" src="https://i.ytimg.com/vi/RF9X3H2tkmU/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLB7LdkvjXiLei4UL9DusYL26fSxRQ" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
             <div class="info">
-                <div class="title"><a href="https://www.youtube.com/watch?v=LFEIEtWulAE" target="_blank">درخواست پارلمان اروپا و آمریکا از شرکت‌های فناوری برای تضمین اینترنت آزاد در ایران</a></div>
-                <div class="channel">Iran International ايران اينترنشنال</div>
+                <div class="title">
+                    <a href="https://www.youtube.com/watch?v=RF9X3H2tkmU" target="_blank">فیلم کمدی جدید "ناجورها" | پژمان جمشیدی، محسن کیایی، المیرا دهقانی | Najoorha - Full Movie</a>
+                    <button class="copy-btn" onclick="copyLink('https://www.youtube.com/watch?v=RF9X3H2tkmU')" title="کپی لینک">📋</button>
+                </div>
+                <div class="channel">Honar Aval</div>
                 <div class="details">
-                    <span>👁️ 5,029 بازدید</span>
-                    <span>⏱️ 5:30</span>
+                    <span>👁️ 82,236 بازدید</span>
+                    <span>⏱️ 1:19:02</span>
                 </div>
             </div>
         </div>
         <div class="card">
-            <img class="thumb" src="https://placehold.co/320x180?text=No+Image" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
+            <img class="thumb" src="https://i.ytimg.com/vi/sdqxzif5HoQ/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLD4q0e99HjkIgFtRtQDAoTYGtrEkA" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
             <div class="info">
-                <div class="title"><a href="https://www.youtube.com/watch?v=5h2OTamxDkE" target="_blank">فیلترشکن اینترنت ملی 😍 پول تو خرج فیلترشکن نکن ❌ عبور از اینترنت ملی 😳 کانفیگ ویتوری رایگان 😊❤</a></div>
-                <div class="channel">CR GAMING | سی آر گیمینگ </div>
+                <div class="title">
+                    <a href="https://www.youtube.com/watch?v=sdqxzif5HoQ" target="_blank">معرفی 24 فیلم جدید</a>
+                    <button class="copy-btn" onclick="copyLink('https://www.youtube.com/watch?v=sdqxzif5HoQ')" title="کپی لینک">📋</button>
+                </div>
+                <div class="channel">Ehsan Mansoori</div>
                 <div class="details">
-                    <span>👁️ 4,516 بازدید</span>
-                    <span>⏱️ 10:11</span>
+                    <span>👁️ 45,765 بازدید</span>
+                    <span>⏱️ 30:38</span>
                 </div>
             </div>
         </div>
         <div class="card">
-            <img class="thumb" src="https://placehold.co/320x180?text=No+Image" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
+            <img class="thumb" src="https://i.ytimg.com/vi/oDC4adjRPwI/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLAFUH8YYQlnfe8lBSOMw9JZAmCWfg" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
             <div class="info">
-                <div class="title"><a href="https://www.youtube.com/watch?v=0LW7ytlvurs" target="_blank">آموزش وصل شدن به اینترنت آزاد در ایران | اینترنت بدون محدودیت</a></div>
-                <div class="channel">KAZA</div>
+                <div class="title">
+                    <a href="https://www.youtube.com/watch?v=oDC4adjRPwI" target="_blank">بهرام افشاری و مهتاب کرامتی در فیلم خانوادگی صحنه زنی | Sahne Zani Movie</a>
+                    <button class="copy-btn" onclick="copyLink('https://www.youtube.com/watch?v=oDC4adjRPwI')" title="کپی لینک">📋</button>
+                </div>
+                <div class="channel">Televika</div>
                 <div class="details">
-                    <span>👁️ 17,339 بازدید</span>
-                    <span>⏱️ 29:36</span>
+                    <span>👁️ 298,997 بازدید</span>
+                    <span>⏱️ 1:34:24</span>
                 </div>
             </div>
         </div>
         <div class="card">
-            <img class="thumb" src="https://placehold.co/320x180?text=No+Image" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
+            <img class="thumb" src="https://i.ytimg.com/vi/V3-k8Gtx5gI/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLCuoF2sI2EfRkLijehYIWO3_-UWaA" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
             <div class="info">
-                <div class="title"><a href="https://www.youtube.com/watch?v=ywxx5AzQl-s" target="_blank">اینترنت آزاد رایگان با Hiddify! بدون نیاز به خرید VPN!</a></div>
-                <div class="channel">Hiddify</div>
+                <div class="title">
+                    <a href="https://www.youtube.com/watch?v=V3-k8Gtx5gI" target="_blank">فیلم جدید و جنایی کت چرمی با بازی جواد عزتی و صابر ابر | Coat Charmi - Full Movie</a>
+                    <button class="copy-btn" onclick="copyLink('https://www.youtube.com/watch?v=V3-k8Gtx5gI')" title="کپی لینک">📋</button>
+                </div>
+                <div class="channel">Shahre Farang</div>
                 <div class="details">
-                    <span>👁️ 26,706 بازدید</span>
-                    <span>⏱️ 8:58</span>
+                    <span>👁️ 613,265 بازدید</span>
+                    <span>⏱️ 1:36:16</span>
                 </div>
             </div>
         </div>
         <div class="card">
-            <img class="thumb" src="https://placehold.co/320x180?text=No+Image" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
+            <img class="thumb" src="https://i.ytimg.com/vi/V4kHDmqnnFc/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLD6Yx69HPhyc6SnydDvEB3MNtN8IA" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
             <div class="info">
-                <div class="title"><a href="https://www.youtube.com/watch?v=wzm-ZrNBAkA" target="_blank">فوری! اینترنت رایگان آمریکا برای مردم ایران! افشاگری خبرنگار آمریکا</a></div>
-                <div class="channel">ماجرا چیه؟</div>
+                <div class="title">
+                    <a href="https://www.youtube.com/watch?v=V4kHDmqnnFc" target="_blank">بهرام افشاری و هومن حاجی عبدالهی در فیلم کمدی مرد عینکی | Marde Eynaki Movie</a>
+                    <button class="copy-btn" onclick="copyLink('https://www.youtube.com/watch?v=V4kHDmqnnFc')" title="کپی لینک">📋</button>
+                </div>
+                <div class="channel">Televika</div>
                 <div class="details">
-                    <span>👁️ 2,641 بازدید</span>
-                    <span>⏱️ 10:26</span>
+                    <span>👁️ 114,751 بازدید</span>
+                    <span>⏱️ 1:40:44</span>
                 </div>
             </div>
         </div>
         <div class="card">
-            <img class="thumb" src="https://placehold.co/320x180?text=No+Image" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
+            <img class="thumb" src="https://i.ytimg.com/vi/E0MgPe0WpXg/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLDHGx-6qLdf0T-77rROVv2L4JpW-g" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
             <div class="info">
-                <div class="title"><a href="https://www.youtube.com/watch?v=dujMBt4sCpw" target="_blank">آموزش روش جدید، رایگان و قدرتمند SNI Spoofing - اتصال بدون هزینه به اینترنت آزاد!</a></div>
-                <div class="channel">Matin SenPai</div>
+                <div class="title">
+                    <a href="https://www.youtube.com/watch?v=E0MgPe0WpXg" target="_blank">پریناز ایزدیار و جواد عزتی در فیلم درام مغز استخوان | Maghze Ostokhan Movie</a>
+                    <button class="copy-btn" onclick="copyLink('https://www.youtube.com/watch?v=E0MgPe0WpXg')" title="کپی لینک">📋</button>
+                </div>
+                <div class="channel">Televika</div>
                 <div class="details">
-                    <span>👁️ 55,428 بازدید</span>
-                    <span>⏱️ 5:31</span>
+                    <span>👁️ 208,505 بازدید</span>
+                    <span>⏱️ 1:43:45</span>
                 </div>
             </div>
         </div>
         <div class="card">
-            <img class="thumb" src="https://placehold.co/320x180?text=No+Image" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
+            <img class="thumb" src="https://i.ytimg.com/vi/jKO14IBpV74/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLCMBZcfiQWYspm3_FjYvhGTTq-Buw" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
             <div class="info">
-                <div class="title"><a href="https://www.youtube.com/watch?v=gguFe8bbX-I" target="_blank">اینترنت بدون محدودیت | آموزش وصل شدن به اینترنت آزاد در ایران</a></div>
-                <div class="channel">ITGoya</div>
+                <div class="title">
+                    <a href="https://www.youtube.com/watch?v=jKO14IBpV74" target="_blank">فیلم سینمایی جنایی "سیزده" با بازی نوید محمدزاده، هومن سیدی و ویشکا آسایش</a>
+                    <button class="copy-btn" onclick="copyLink('https://www.youtube.com/watch?v=jKO14IBpV74')" title="کپی لینک">📋</button>
+                </div>
+                <div class="channel">TPM - Top Persian Movies</div>
                 <div class="details">
-                    <span>👁️ 5,591 بازدید</span>
-                    <span>⏱️ 7:33</span>
+                    <span>👁️ 286,724 بازدید</span>
+                    <span>⏱️ 1:33:33</span>
                 </div>
             </div>
         </div>
     </div>
     <div class="footer">
-        ساخته شده توسط GitHub Actions | آخرین به‌روزرسانی: 2026-05-13 11:12:24
+        ساخته شده توسط GitHub Actions | آخرین به‌روزرسانی: 2026-05-13 11:21:29
     </div>
 </div>
 </body>
