@@ -41,22 +41,23 @@ jobs:
           REPO: ${{ github.repository }}
         run: python3 generate_html.py
 
+      - name: ذخیره در پوشه history (مرتب برای YouTube)
+        run: |
+          # حذف پیشوند ytsearchN: از عبارت جستجو
+          CLEAN_QUERY=$(echo "${{ github.event.inputs.query }}" | sed -E 's/^ytsearch[0-9]*://')
+          # جایگزینی کاراکترهای غیرمجاز با خط تیره
+          SANITIZED=$(echo "$CLEAN_QUERY" | tr ' ' '_' | tr -cd 'a-zA-Z0-9آ-ی۰-۹_' | cut -c1-40)
+          TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
+          HIST_DIR="history/YouTube/${SANITIZED}_${TIMESTAMP}"
+          mkdir -p "$HIST_DIR"
+          cp search_results/index.html "$HIST_DIR/"
+          cp data.json "$HIST_DIR/"
+          echo "ذخیره در $HIST_DIR"
 
-- name: ذخیره در پوشه history
-  run: |
-    SANITIZED=$(echo "${{ github.event.inputs.query }}" | sed 's/[^a-zA-Z0-9آ-ی۰-۹]/_/g' | cut -c1-50)
-    TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
-    HIST_DIR="history/youtube/${SANITIZED}_${TIMESTAMP}"
-    mkdir -p "$HIST_DIR"
-    cp search_results/index.html "$HIST_DIR/"
-    cp data.json "$HIST_DIR/"
-    echo "ذخیره در $HIST_DIR"
-
-- name: ذخیره و آپلود نتایج
-  run: |
-    cp search_results/index.html ./index.html
-    git config user.name "github-actions[bot]"
-    git config user.email "bot@github.com"
-    git add search_results/index.html index.html data.json history/
-    git commit -m "نتایج جستجوی یوتیوب: ${{ github.event.inputs.query }}" || echo "هیچ تغییری نبود"
-    git push
+      - name: ذخیره و آپلود نتایج
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "bot@github.com"
+          git add search_results/index.html data.json history/
+          git commit -m "نتایج جستجوی یوتیوب: ${{ github.event.inputs.query }}" || echo "هیچ تغییری نبود"
+          git push
