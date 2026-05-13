@@ -1,4 +1,4 @@
-import json, os, time, base64, urllib.request
+import json, os, time, base64, urllib.request, html
 
 repo = os.environ.get('REPO', '')
 
@@ -47,11 +47,9 @@ html_header = f'''<!DOCTYPE html>
                 prompt('لینک را کپی کنید:', url);
             }});
         }}
-        function startDownload(appId) {{
-            // کپی Package Name و باز کردن صفحه اجرای workflow دانلود
-            copyLink(appId);
-            // TODO: آدرس مخزن دانلود را بعداً جایگزین کن
-            window.open('https://github.com/USERNAME/downloader/actions/workflows/download_apk.yml', '_blank');
+        function startDownload(packageName) {{
+            copyLink(packageName);
+            window.open('https://github.com/{repo}/actions/workflows/googleplay.yml', '_blank');
         }}
     </script>
 </head>
@@ -64,17 +62,20 @@ html_header = f'''<!DOCTYPE html>
     <div class="results">'''
 
 if not apps:
-    no_result_card = '''<div style="grid-column: 1/-1; text-align: center; padding: 40px; font-size: 1.2rem; color: #666;">⚠️ هیچ نتیجه‌ای یافت نشد.</div>'''
+    no_result_card = '''<div style="grid-column: 1/-1; text-align: center; padding: 40px; font-size: 1.2rem; color: #666;">⚠️ هیچ نتیجه‌ای یافت نشد. لطفاً عبارت دیگری را امتحان کنید.</div>'''
     cards = [no_result_card]
 else:
     cards = []
     for app in apps:
-        title = app.get('title', 'بدون نام')
-        dev = app.get('developer', 'نامشخص')
-        score = app.get('score', 0) or 0
-        installs = app.get('installs', 'نامشخص')
+        # فرار کردن کاراکترهای HTML برای ایمنی
+        title = html.escape(app.get('title', 'بدون نام'))
+        dev = html.escape(app.get('developer', 'نامشخص'))
+        installs = html.escape(app.get('installs', 'نامشخص'))
         app_id = app.get('appId', '')
-        url = f"https://play.google.com/store/apps/details?id={app_id}" if app_id else "#"
+        url = f"https://play.google.com/store/apps/details?id={html.escape(app_id)}" if app_id else "#"
+        score = app.get('score', 0) or 0
+
+        # آیکون (base64)
         icon_url = app.get('icon', '')
         icon_b64 = None
         if icon_url:
@@ -83,18 +84,20 @@ else:
                     image_data = resp.read()
                 b64 = base64.b64encode(image_data).decode('utf-8')
                 icon_b64 = f"data:image/png;base64,{b64}"
-            except Exception as e:
-                print(f"خطا در دانلود آیکون {icon_url}: {e}")
+            except Exception:
+                pass
         if not icon_b64:
+            # placeholder به‌صورت SVG inline
             icon_b64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23cccccc'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='10' font-family='sans-serif'%3EN/A%3C/text%3E%3C/svg%3E"
 
+        # دکمه‌های عمل: کپی لینک گوگل‌پلی و دانلود (با ارسال نام پکیج)
         card = f'''
         <div class="card">
             <img class="icon" src="{icon_b64}" loading="lazy" alt="icon">
             <div class="info">
                 <div class="app-name">
                     <a href="{url}" target="_blank">{title}</a>
-                    <button class="copy-btn" onclick="copyLink('{url}')" title="کپی لینک">📋</button>
+                    <button class="copy-btn" onclick="copyLink('{url}')" title="کپی لینک گوگل‌پلی">📋</button>
                 </div>
                 <div class="developer">{dev}</div>
                 <div class="meta">
