@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       query:
-        description: 'عبارت جستجو (مثال: ytsearch10:آموزش پایتون)'
+        description: 'عبارت جستجو'
         required: true
-        default: 'ytsearch10:فیلم جدید'
+        default: ''
       max_results:
         description: 'تعداد نتایج'
         required: true
@@ -32,16 +32,129 @@ jobs:
         run: |
           MAX=${{ github.event.inputs.max_results }}
           QUERY="${{ github.event.inputs.query }}"
-          if [[ ! "$QUERY" =~ ^ytsearch[0-9]*: ]]; then
+          if [[ -z "$QUERY" ]]; then
+            QUERY="ytsearch${MAX}:فیلم جدید"
+          elif [[ ! "$QUERY" =~ ^ytsearch[0-9]*: ]]; then
             QUERY="ytsearch${MAX}:${QUERY}"
           fi
           echo "جستجو: $QUERY"
-          yt-dlp --flat-playlist --dump-json --playlist-end "$MAX" "$QUERY" > data.json || echo "[]" > data.json
+          yt-dlp --flat-playlist --dump-json --playlist-end "$MAX" "$QUERY" > data.json
 
-      - name: اجرای اسکریپت ساخت HTML
+      - name: ساخت HTML با اسکریپت پایتون (رفع کامل عکس و زمان)
         env:
           REPO: ${{ github.repository }}
-        run: python3 generate_youtube_html.py
+        run: |
+          cat > generate_youtube_html.py << 'EOF'
+import json, os, time, re
+
+with open('data.json', encoding='utf-8') as f:
+    videos = [json.loads(line) for line in f]
+
+repo = os.environ.get('REPO', '')
+
+html_header = f'''<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نتایج جستجو – یوتیوب</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f9f9f9; padding: 20px; }}
+        .container {{ max-width: 1200px; margin: 0 auto; }}
+        h1 {{ text-align: center; color: #ff0000; margin-bottom: 20px; font-size: 2rem; }}
+        .search-btn {{ text-align: center; margin-bottom: 30px; }}
+        .search-btn a {{ background: #ff0000; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold; }}
+        .results {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; }}
+        .card {{ background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: 0.2s; }}
+        .card:hover {{ transform: translateY(-5px); }}
+        .thumb {{ width: 100%; aspect-ratio: 16/9; object-fit: cover; }}
+        .info {{ padding: 15px; }}
+        .title {{ font-size: 1rem; font-weight: 600; margin-bottom: 8px; line-height: 1.4; }}
+        .title a {{ text-decoration: none; color: #0f0f0f; }}
+        .title a:hover {{ text-decoration: underline; color: #ff0000; }}
+        .channel {{ color: #606060; font-size: 0.85rem; margin-bottom: 10px; }}
+        .details {{ display: flex; justify-content: space-between; font-size: 0.75rem; color: #606060; border-top: 1px solid #e5e5e5; padding-top: 10px; margin-top: 5px; }}
+        .footer {{ text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #888; font-size: 0.8rem; }}
+        @media (max-width: 600px) {{ .results {{ grid-template-columns: 1fr; }} }}
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🎬 نتایج جستجو</h1>
+    <div class="search-btn">
+        <a href="https://github.com/{repo}/actions/workflows/search.yml" target="_blank">➕ جستجوی جدید</a>
+    </div>
+    <div class="results">'''
+
+cards = []
+for v in videos:
+    # مدت زمان (رفع خطای float)
+    dur_sec = v.get('duration', 0) or 0
+    total_seconds = int(dur_sec)
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+    if hours > 0:
+        duration_str = f"{hours}:{minutes:02d}:{seconds:02d}"
+    else:
+        duration_str = f"{minutes}:{seconds:02d}"
+
+    # بازدید
+    views = v.get('view_count', 0) or 0
+    views_str = f"{views:,}" if views > 0 else "۰"
+
+    # دریافت عکس از thumbnails (مانند گوگل‌پلی که عکس داشت)
+    thumb = ''
+    if 'thumbnails' in v and isinstance(v['thumbnails'], list) and len(v['thumbnails']) > 0:
+        thumb = v['thumbnails'][-1].get('url', '')
+    if not thumb and 'thumbnail' in v:
+        thumb = v['thumbnail']
+    if not thumb:
+        thumb = "https://placehold.co/320x180?text=No+Image"
+
+    uploader = v.get('uploader', 'نامشخص')
+    title = v['title']
+
+    card = f'''
+        <div class="card">
+            <img class="thumb" src="{thumb}" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
+            <div class="info">
+                <div class="title"><a href="{v['webpage_url']}" target="_blank">{title}</a></div>
+                <div class="channel">{uploader}</div>
+                <div class="details">
+                    <span>👁️ {views_str} بازدید</span>
+                    <span>⏱️ {duration_str}</span>
+                </div>
+            </div>
+        </div>'''
+    cards.append(card)
+
+html_footer = f'''
+    </div>
+    <div class="footer">
+        <div>
+            <a href="https://github.com/{repo}/tree/main/history" target="_blank" style="color: #ff0000; text-decoration: none;">📂 مشاهده تاریخچه همه جستجوها</a>
+        </div>
+        <div style="margin-top: 10px;">
+            ساخته شده توسط GitHub Actions | آخرین به‌روزرسانی: {time.strftime('%Y-%m-%d %H:%M:%S')}
+        </div>
+    </div>
+</div>
+</body>
+</html>'''
+
+full_html = html_header + ''.join(cards) + html_footer
+
+os.makedirs('search_results', exist_ok=True)
+with open('search_results/index.html', 'w', encoding='utf-8') as f:
+    f.write(full_html)
+with open('index.html', 'w', encoding='utf-8') as f:
+    f.write(full_html)
+
+print(f"✅ تعداد ویدیوها: {len(videos)}")
+EOF
+          python3 generate_youtube_html.py
 
       - name: ذخیره در پوشه history
         run: |
@@ -78,12 +191,10 @@ jobs:
             echo "[]" > "$DIR/data.json"
           fi
           echo "ذخیره در $DIR"
-          # انتقال DIR به environment بعدی
           echo "DIR=$DIR" >> $GITHUB_ENV
 
       - name: رمزگذاری مسیر و نمایش لینک به فایل این جستجو
         run: |
-          # رمزگذاری مسیر برای استفاده در URL
           ENCODED_DIR=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${{ env.DIR }}', safe=''))")
           echo "### 📁 فایل این جستجو:" >> $GITHUB_STEP_SUMMARY
           echo "[مشاهده فایل](https://github.com/${{ github.repository }}/blob/main/${ENCODED_DIR}/index.html)" >> $GITHUB_STEP_SUMMARY
