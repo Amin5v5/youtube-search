@@ -17,10 +17,12 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
 
-      - name: نصب ابزارها
+      - name: نصب کتابخانۀ گوگل‌پلی
         run: pip install google-play-scraper
 
       - name: دریافت اطلاعات از گوگل‌پلی
@@ -38,7 +40,6 @@ jobs:
               print(f"خطا: {e}", file=sys.stderr)
               results = []
 
-          # ذخیره به صورت JSON خط‌به‌خط
           with open('data_play.json', 'w', encoding='utf-8') as f:
               for app in results:
                   f.write(json.dumps(app, ensure_ascii=False) + '\n')
@@ -46,31 +47,48 @@ jobs:
           print(f"✅ تعداد نتایج: {len(results)}")
           EOF
 
-      - name: بررسی فایل داده
-        run: |
-          echo "محتوای data_play.json:"
-          head -c 500 data_play.json || echo "فایل خالی است"
-
       - name: اجرای اسکریپت ساخت HTML
         env:
           REPO: ${{ github.repository }}
         run: python3 generate_googleplay_html.py
 
-      - name: ذخیره در پوشه history
+      - name: ذخیره در پوشه history (مرتب‌شده با پایتون)
         run: |
-          SANITIZED=$(echo "${{ github.event.inputs.query }}" | sed 's/[^a-zA-Z0-9آ-ی۰-۹]/_/g' | cut -c1-50)
-          TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
-          HIST_DIR="history/googleplay/${SANITIZED}_${TIMESTAMP}"
-          mkdir -p "$HIST_DIR"
-          cp search_results/googleplay/index.html "$HIST_DIR/"
-          cp data_play.json "$HIST_DIR/"
-          echo "ذخیره در $HIST_DIR"
+          QUERY="${{ github.event.inputs.query }}"
+          DATE_PART=$(date +'%Y.%m.%d')
+          SANITIZED=$(python3 -c "
+          import re, sys
+          q = sys.argv[1]
+          q = re.sub(r'\s+', '_', q.strip())
+          q = re.sub(r'[^\w]', '', q)
+          print(q[:40])
+          " "$QUERY")
+          
+          BASE_DIR="history/GooglePlay/${DATE_PART} - ${SANITIZED}"
+          DIR="$BASE_DIR"
+          COUNTER=1
+          while [ -d "$DIR" ]; do
+            DIR="${BASE_DIR}_${COUNTER}"
+            COUNTER=$((COUNTER + 1))
+          done
+          mkdir -p "$DIR"
+          
+          if [ -f search_results/googleplay/index.html ]; then
+            cp search_results/googleplay/index.html "$DIR/"
+          else
+            echo "<html><body><h1>خطا: فایل HTML ساخته نشد</h1></body></html>" > "$DIR/index.html"
+          fi
+          if [ -f data_play.json ]; then
+            cp data_play.json "$DIR/"
+          else
+            echo "[]" > "$DIR/data_play.json"
+          fi
+          echo "ذخیره در $DIR"
 
       - name: ذخیره و آپلود نتایج
         run: |
-          cp search_results/googleplay/index.html ./play_index.html
           git config user.name "github-actions[bot]"
           git config user.email "bot@github.com"
-          git add search_results/googleplay/index.html play_index.html data_play.json history/
+          git add search_results/ data_play.json history/ 2>/dev/null || true
           git commit -m "نتایج جستجوی گوگل‌پلی: ${{ github.event.inputs.query }}" || echo "هیچ تغییری نبود"
           git push
