@@ -43,12 +43,9 @@ jobs:
         run: |
           python3 << 'EOF'
           import json, os, time
-
           repo = os.environ['REPO']
-
           with open('data.json', encoding='utf-8') as f:
               videos = [json.loads(line) for line in f]
-
           html_header = f'''<!DOCTYPE html>
           <html lang="fa" dir="rtl">
           <head>
@@ -83,7 +80,6 @@ jobs:
                   <a href="https://github.com/{repo}/actions/workflows/search.yml" target="_blank">➕ جستجوی جدید</a>
               </div>
               <div class="results">'''
-
           html_footer = f'''
               </div>
               <div class="footer">
@@ -92,7 +88,6 @@ jobs:
           </div>
           </body>
           </html>'''
-
           cards = []
           for v in videos:
               dur_sec = v.get('duration', 0) or 0
@@ -106,14 +101,11 @@ jobs:
                       duration_str = f"{minutes}:{seconds:02d}"
               else:
                   duration_str = "نامشخص"
-              
               views = v.get('view_count', 0) or 0
               views_str = f"{views:,}" if views > 0 else "۰"
-              
               thumb = v.get('thumbnail', '')
               if not thumb:
                   thumb = "https://placehold.co/320x180?text=No+Image"
-              
               card = f'''
                   <div class="card">
                       <img class="thumb" src="{thumb}" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
@@ -127,13 +119,10 @@ jobs:
                       </div>
                   </div>'''
               cards.append(card)
-
           full_html = html_header + ''.join(cards) + html_footer
-
           os.makedirs('search_results', exist_ok=True)
           with open('search_results/index.html', 'w', encoding='utf-8') as f:
               f.write(full_html)
-
           print(f"✅ صفحه HTML ساخته شد. تعداد ویدیوها: {len(videos)}")
           EOF
 
