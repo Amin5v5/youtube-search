@@ -18,6 +18,67 @@ on:
           - '30'
           - '50'
           - '100'
+      category:
+        description: 'دسته‌بندی'
+        required: false
+        default: 'any'
+        type: choice
+        options:
+          - 'any (همه)'
+          - 'GAME (بازی)'
+          - 'PRODUCTIVITY (بهره‌وری)'
+          - 'SOCIAL (اجتماعی)'
+          - 'EDUCATION (آموزش)'
+          - 'ENTERTAINMENT (سرگرمی)'
+          - 'TOOLS (ابزارها)'
+          - 'COMMUNICATION (ارتباطی)'
+          - 'HEALTH_AND_FITNESS (سلامت)'
+          - 'TRAVEL_AND_LOCAL (سفر و محلی)'
+          - 'FINANCE (مالی)'
+          - 'PHOTOGRAPHY (عکاسی)'
+          - 'NEWS_AND_MAGAZINES (اخبار)'
+          - 'SHOPPING (خرید)'
+          - 'BOOKS_AND_REFERENCE (کتاب)'
+          - 'BUSINESS (کسب‌وکار)'
+          - 'COMICS (کمیک)'
+          - 'LIFESTYLE (سبک زندگی)'
+          - 'PERSONALIZATION (شخصی‌سازی)'
+          - 'SPORTS (ورزش)'
+          - 'WEATHER (آب‌وهوا)'
+          - 'FAMILY (خانوادگی)'
+          - 'MEDICAL (پزشکی)'
+          - 'MUSIC_AND_AUDIO (موسیقی)'
+          - 'VIDEO_PLAYERS (پخش ویدیو)'
+          - 'MAPS_AND_NAVIGATION (نقشه)'
+          - 'AUTO_AND_VEHICLES (خودرو)'
+          - 'BEAUTY (زیبایی)'
+          - 'DATING (قرار عاشقانه)'
+          - 'EVENTS (رویدادها)'
+          - 'FOOD_AND_DRINK (غذا و نوشیدنی)'
+          - 'HOUSE_AND_HOME (خانه)'
+          - 'LIBRARIES_AND_DEMO (کتابخانه)'
+          - 'PARENTING (والدین)'
+          - 'ART_AND_DESIGN (هنر و طراحی)'
+      min_rating:
+        description: 'حداقل امتیاز'
+        required: false
+        default: '0'
+        type: choice
+        options:
+          - '0'
+          - '3.0'
+          - '3.5'
+          - '4.0'
+          - '4.5'
+      price:
+        description: 'قیمت'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - 'all (همه)'
+          - 'free (رایگان)'
+          - 'paid (پولی)'
 
 jobs:
   search:
@@ -40,9 +101,25 @@ jobs:
 
           query = "${{ github.event.inputs.query }}"
           max_results = int("${{ github.event.inputs.max_results }}")
+          category = "${{ github.event.inputs.category }}"
+          min_rating = "${{ github.event.inputs.min_rating }}"
+          price = "${{ github.event.inputs.price }}"
+
+          # استخراج کد دسته‌بندی (قسمت انگلیسی قبل از پرانتز)
+          cat_code = category.split(' ')[0] if category != 'any (همه)' else None
+
+          kwargs = {}
+          if cat_code and cat_code != 'any':
+              kwargs['cat'] = cat_code
+          if min_rating != '0':
+              kwargs['score'] = float(min_rating)
+          if price == 'free (رایگان)':
+              kwargs['free'] = True
+          elif price == 'paid (پولی)':
+              kwargs['free'] = False
 
           try:
-              results = search(query, n_hits=max_results, lang='fa', country='ir')
+              results = search(query, n_hits=max_results, lang='fa', country='ir', **kwargs)
           except Exception as e:
               print(f"خطا: {e}", file=sys.stderr)
               results = []
@@ -97,7 +174,6 @@ jobs:
 
       - name: رمزگذاری مسیر و نمایش لینک به فایل این جستجو
         run: |
-          # اصلاح: safe='/' تا اسلش‌ها encode نشوند و لینک به درستی کار کند
           ENCODED_DIR=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${{ env.DIR }}', safe='/'))")
           echo "### 📁 فایل این جستجو:" >> $GITHUB_STEP_SUMMARY
           echo "[مشاهده فایل](https://github.com/${{ github.repository }}/blob/main/${ENCODED_DIR}/index.html)" >> $GITHUB_STEP_SUMMARY
