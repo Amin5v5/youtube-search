@@ -4,13 +4,76 @@ on:
   workflow_dispatch:
     inputs:
       query:
-        description: 'عبارت جستجو (مثال: ytsearch10:آموزش پایتون)'
+        description: 'عبارت جستجو (مثلاً: آموزش پایتون)'
         required: true
-        default: 'ytsearch10:فیلم جدید'
+        default: ''
       max_results:
         description: 'تعداد نتایج'
         required: true
         default: '10'
+        type: choice
+        options:
+          - '10'
+          - '20'
+          - '30'
+          - '50'
+          - '100'
+      upload_date:
+        description: 'تاریخ آپلود'
+        required: false
+        default: 'any'
+        type: choice
+        options:
+          - 'any (همه)'
+          - 'today (امروز)'
+          - 'week (این هفته)'
+          - 'month (این ماه)'
+          - 'year (امسال)'
+      type_filter:
+        description: 'نوع محتوا'
+        required: false
+        default: 'any'
+        type: choice
+        options:
+          - 'any (همه)'
+          - 'video (ویدیو)'
+          - 'channel (کانال)'
+          - 'playlist (پلی‌لیست)'
+      duration:
+        description: 'مدت‌زمان ویدیو'
+        required: false
+        default: 'any'
+        type: choice
+        options:
+          - 'any (همه)'
+          - 'short (کوتاه < ۴ دقیقه)'
+          - 'long (بلند > ۲۰ دقیقه)'
+      features:
+        description: 'ویژگی‌های خاص'
+        required: false
+        default: 'any'
+        type: choice
+        options:
+          - 'any (همه)'
+          - 'live (پخش زنده)'
+          - '4k'
+          - 'hd'
+          - 'hdr'
+          - 'vr180'
+          - '3d'
+          - '360'
+          - 'location'
+          - 'purchased'
+      sort_by:
+        description: 'مرتب‌سازی بر اساس'
+        required: false
+        default: 'relevance'
+        type: choice
+        options:
+          - 'relevance (مرتبط‌ترین)'
+          - 'upload_date (تاریخ آپلود)'
+          - 'view_count (بازدید)'
+          - 'rating (امتیاز)'
 
 jobs:
   search:
@@ -28,15 +91,89 @@ jobs:
           sudo apt-get install -y jq
           pip install yt-dlp
 
+      - name: ساخت کد SP فیلترها
+        run: |
+          # مپ کردن گزینه‌ها به پارامترهای sp یوتیوب (مستندات رسمی)
+          declare -A UPLOAD_DATE_MAP=(
+            ["any (همه)"]=""
+            ["today (امروز)"]="EgIIAg%253D%253D"
+            ["week (این هفته)"]="EgIIAw%253D%253D"
+            ["month (این ماه)"]="EgIIBA%253D%253D"
+            ["year (امسال)"]="EgIIBQ%253D%253D"
+          )
+          declare -A TYPE_MAP=(
+            ["any (همه)"]=""
+            ["video (ویدیو)"]="EgIQAQ%253D%253D"
+            ["channel (کانال)"]="EgIQAg%253D%253D"
+            ["playlist (پلی‌لیست)"]="EgIQAw%253D%253D"
+          )
+          declare -A DURATION_MAP=(
+            ["any (همه)"]=""
+            ["short (کوتاه < ۴ دقیقه)"]="EgIYAQ%253D%253D"
+            ["long (بلند > ۲۰ دقیقه)"]="EgIYAw%253D%253D"
+          )
+          declare -A FEATURES_MAP=(
+            ["any (همه)"]=""
+            ["live (پخش زنده)"]="EgJAAQ%253D%253D"
+            ["4k"]="EgJwAQ%253D%253D"
+            ["hd"]="EgIgAQ%253D%253D"
+            ["hdr"]="EgIgCg%253D%253D"
+            ["vr180"]="EgIgBQ%253D%253D"
+            ["3d"]="EgIgAg%253D%253D"
+            ["360"]="EgIgAw%253D%253D"
+            ["location"]="EgIgBA%253D%253D"
+            ["purchased"]="EgJgAQ%253D%253D"
+          )
+          declare -A SORT_MAP=(
+            ["relevance (مرتبط‌ترین)"]=""
+            ["upload_date (تاریخ آپلود)"]="CAI%253D"
+            ["view_count (بازدید)"]="CAM%253D"
+            ["rating (امتیاز)"]="CAE%253D"
+          )
+
+          # دریافت مقادیر انتخاب‌شده
+          UD="${{ github.event.inputs.upload_date }}"
+          TYPE="${{ github.event.inputs.type_filter }}"
+          DUR="${{ github.event.inputs.duration }}"
+          FEAT="${{ github.event.inputs.features }}"
+          SORT="${{ github.event.inputs.sort_by }}"
+
+          # ترکیب پارامترها (اولویت: آپلود > نوع > مدت > ویژگی > مرتب‌سازی)
+          SP=""
+          if [ -n "${UPLOAD_DATE_MAP[$UD]}" ]; then
+            SP="${UPLOAD_DATE_MAP[$UD]}"
+          elif [ -n "${TYPE_MAP[$TYPE]}" ]; then
+            SP="${TYPE_MAP[$TYPE]}"
+          elif [ -n "${DURATION_MAP[$DUR]}" ]; then
+            SP="${DURATION_MAP[$DUR]}"
+          elif [ -n "${FEATURES_MAP[$FEAT]}" ]; then
+            SP="${FEATURES_MAP[$FEAT]}"
+          elif [ -n "${SORT_MAP[$SORT]}" ]; then
+            SP="${SORT_MAP[$SORT]}"
+          fi
+
+          echo "SP=${SP}" >> $GITHUB_ENV
+          echo "SParam: ${SP:-none}"
+
       - name: دریافت اطلاعات از یوتیوب
         run: |
           MAX=${{ github.event.inputs.max_results }}
           QUERY="${{ github.event.inputs.query }}"
+          
+          # اگر کاربر ytsearch را ننوشته، خودکار اضافه کن
           if [[ ! "$QUERY" =~ ^ytsearch[0-9]*: ]]; then
             QUERY="ytsearch${MAX}:${QUERY}"
           fi
+          
           echo "جستجو: $QUERY"
-          yt-dlp --flat-playlist --dump-json --playlist-end "$MAX" "$QUERY" > data.json || echo "[]" > data.json
+          
+          # اضافه کردن پارامترهای جستجو (sp) در صورت وجود
+          EXTRA_ARGS=""
+          if [ -n "$SP" ]; then
+            EXTRA_ARGS="--extractor-args \"youtube:search_params=${SP}\""
+          fi
+          
+          eval "yt-dlp --flat-playlist --dump-json --playlist-end '$MAX' $EXTRA_ARGS '$QUERY' > data.json || echo '[]' > data.json"
 
       - name: اجرای اسکریپت ساخت HTML
         env:
@@ -78,12 +215,10 @@ jobs:
             echo "[]" > "$DIR/data.json"
           fi
           echo "ذخیره در $DIR"
-          # انتقال DIR به environment بعدی
           echo "DIR=$DIR" >> $GITHUB_ENV
 
       - name: رمزگذاری مسیر و نمایش لینک به فایل این جستجو
         run: |
-          # رمزگذاری مسیر برای استفاده در URL
           ENCODED_DIR=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${{ env.DIR }}', safe=''))")
           echo "### 📁 فایل این جستجو:" >> $GITHUB_STEP_SUMMARY
           echo "[مشاهده فایل](https://github.com/${{ github.repository }}/blob/main/${ENCODED_DIR}/index.html)" >> $GITHUB_STEP_SUMMARY
