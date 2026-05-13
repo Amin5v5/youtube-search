@@ -49,22 +49,27 @@ if not videos:
 else:
     cards = []
     for v in videos:
+        # اصلاح‌شده برای حل مشکل نوع داده‌ی duration
         dur_sec = v.get('duration', 0) or 0
-        if dur_sec > 0:
-            hours = dur_sec // 3600
-            minutes = (dur_sec % 3600) // 60
-            seconds = dur_sec % 60
+        if isinstance(dur_sec, (int, float)):
+            total_seconds = int(dur_sec)
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) // 60
+            seconds = total_seconds % 60
             if hours > 0:
                 duration_str = f"{hours}:{minutes:02d}:{seconds:02d}"
             else:
                 duration_str = f"{minutes}:{seconds:02d}"
         else:
             duration_str = "نامشخص"
+
         views = v.get('view_count', 0) or 0
         views_str = f"{views:,}" if views > 0 else "۰"
+
         thumb = v.get('thumbnail', '')
         if not thumb:
             thumb = "https://placehold.co/320x180?text=No+Image"
+
         card = f'''
         <div class="card">
             <img class="thumb" src="{thumb}" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
