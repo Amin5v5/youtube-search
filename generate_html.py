@@ -2,7 +2,7 @@ import json, os, time, base64, urllib.request
 
 repo = os.environ.get('REPO', '')
 
-# خواندن داده‌ها (اگر فایل وجود نداشت یا خالی بود)
+# خواندن داده‌ها
 if not os.path.exists('data.json') or os.path.getsize('data.json') == 0:
     videos = []
 else:
@@ -30,8 +30,9 @@ html_header = f'''<!DOCTYPE html>
         .title {{ font-size: 1rem; font-weight: 600; margin-bottom: 8px; line-height: 1.4; display: flex; align-items: flex-start; gap: 8px; }}
         .title a {{ text-decoration: none; color: #0f0f0f; flex: 1; }}
         .title a:hover {{ text-decoration: underline; color: #ff0000; }}
-        .copy-btn {{ background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: 2px; color: #606060; transition: 0.2s; }}
-        .copy-btn:hover {{ color: #ff0000; }}
+        .action-btns {{ display: flex; gap: 5px; margin-top: 5px; }}
+        .copy-btn, .download-btn {{ background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: 2px 5px; color: #606060; transition: 0.2s; }}
+        .copy-btn:hover, .download-btn:hover {{ color: #ff0000; }}
         .channel {{ color: #606060; font-size: 0.85rem; margin-bottom: 10px; }}
         .details {{ display: flex; justify-content: space-between; font-size: 0.75rem; color: #606060; border-top: 1px solid #e5e5e5; padding-top: 10px; margin-top: 5px; }}
         .footer {{ text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #888; font-size: 0.8rem; }}
@@ -44,6 +45,11 @@ html_header = f'''<!DOCTYPE html>
             }}).catch(() => {{
                 prompt('لینک را کپی کنید:', url);
             }});
+        }}
+        function startDownload(url) {{
+            // کپی لینک و باز کردن صفحه اجرای workflow دانلود
+            copyLink(url);
+            window.open('https://github.com/{repo}/actions/workflows/youtube.yml', '_blank');
         }}
     </script>
 </head>
@@ -79,7 +85,6 @@ else:
         # ---------- تصویر (دانلود و تبدیل به base64) ----------
         thumb_url = ''
         if 'thumbnails' in v and isinstance(v['thumbnails'], list) and len(v['thumbnails']) > 0:
-            # بالاترین کیفیت (آخرین عنصر)
             thumb_url = v['thumbnails'][-1].get('url', '')
         if not thumb_url:
             thumb_url = v.get('thumbnail', '')
@@ -87,21 +92,16 @@ else:
         thumb_base64 = None
         if thumb_url:
             try:
-                # دانلود تصویر از سرور گیت‌هاب (دسترسی آزاد دارد)
                 with urllib.request.urlopen(thumb_url, timeout=10) as resp:
                     image_data = resp.read()
                 b64 = base64.b64encode(image_data).decode('utf-8')
-                # معمولاً jpg است، ولی می‌توان با توجه به content-type دقیقتر عمل کرد
                 thumb_base64 = f"data:image/jpeg;base64,{b64}"
             except Exception as e:
                 print(f"خطا در دانلود تصویر {thumb_url}: {e}")
 
         if not thumb_base64:
-            # تصویر جایگزین (همان placeholder) را هم به base64 تبدیل می‌کنیم تا بدون شبکه هم کار کند
-            # یک تصویر ساده‌ی خاکستری 1x1 پیکسل به صورت base64
             thumb_base64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='180'%3E%3Crect width='320' height='180' fill='%23cccccc'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='16' font-family='sans-serif'%3ENo Image%3C/text%3E%3C/svg%3E"
 
-        # ---------- نام کانال ----------
         uploader = v.get('uploader', 'نامشخص')
         webpage_url = v['webpage_url']
 
@@ -111,9 +111,12 @@ else:
             <div class="info">
                 <div class="title">
                     <a href="{webpage_url}" target="_blank">{v['title']}</a>
-                    <button class="copy-btn" onclick="copyLink('{webpage_url}')" title="کپی لینک">📋</button>
                 </div>
                 <div class="channel">{uploader}</div>
+                <div class="action-btns">
+                    <button class="copy-btn" onclick="copyLink('{webpage_url}')" title="کپی لینک">📋</button>
+                    <button class="download-btn" onclick="startDownload('{webpage_url}')" title="دانلود با workflow">⬇️ دانلود</button>
+                </div>
                 <div class="details">
                     <span>👁️ {views_str} بازدید</span>
                     <span>⏱️ {duration_str}</span>
