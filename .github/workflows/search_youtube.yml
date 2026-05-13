@@ -78,12 +78,13 @@ jobs:
             echo "[]" > "$DIR/data.json"
           fi
           echo "ذخیره در $DIR"
+          # انتقال DIR به environment بعدی
+          echo "DIR=$DIR" >> $GITHUB_ENV
 
-      # 🆕 لینک مستقیم به فایل (نه پوشه) با عنوان "فایل این جستجو"
       - name: نمایش لینک به فایل این جستجو
         run: |
           echo "### 📁 فایل این جستجو:" >> $GITHUB_STEP_SUMMARY
-          echo "[مشاهده فایل](https://github.com/${{ github.repository }}/blob/main/$DIR/index.html)" >> $GITHUB_STEP_SUMMARY
+          echo "[مشاهده فایل](https://github.com/${{ github.repository }}/blob/main/${{ env.DIR }}/index.html)" >> $GITHUB_STEP_SUMMARY
 
       - name: ذخیره و آپلود نتایج
         run: |
