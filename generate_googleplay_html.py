@@ -2,6 +2,7 @@ import json, os, time, base64, urllib.request
 
 repo = os.environ.get('REPO', '')
 
+# خواندن داده‌ها
 if not os.path.exists('data_play.json') or os.path.getsize('data_play.json') == 0:
     apps = []
 else:
@@ -26,14 +27,14 @@ html_header = f'''<!DOCTYPE html>
         .card:hover {{ transform: translateY(-5px); }}
         .icon {{ width: 64px; height: 64px; object-fit: cover; border-radius: 12px; margin-left: 15px; }}
         .info {{ flex: 1; }}
-        .app-name {{ font-size: 1.1rem; font-weight: 600; margin-bottom: 5px; }}
+        .app-name {{ font-size: 1.1rem; font-weight: 600; margin-bottom: 5px; display: flex; align-items: center; gap: 8px; }}
         .app-name a {{ text-decoration: none; color: #0f0f0f; }}
         .app-name a:hover {{ text-decoration: underline; color: #34a853; }}
         .developer {{ color: #606060; font-size: 0.85rem; margin-bottom: 5px; }}
         .meta {{ display: flex; justify-content: space-between; font-size: 0.8rem; color: #606060; }}
         .rating {{ color: #fbbc04; }}
         .install {{ color: #4285f4; }}
-        .copy-btn {{ background: none; border: none; cursor: pointer; font-size: 1rem; color: #606060; margin-right: 5px; }}
+        .copy-btn {{ background: none; border: none; cursor: pointer; font-size: 1rem; color: #606060; }}
         .copy-btn:hover {{ color: #34a853; }}
         .footer {{ text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #888; font-size: 0.8rem; }}
         @media (max-width: 600px) {{ .results {{ grid-template-columns: 1fr; }} }}
@@ -57,14 +58,14 @@ html_header = f'''<!DOCTYPE html>
     <div class="results">'''
 
 if not apps:
-    no_result_card = '''<div style="grid-column: 1/-1; text-align: center; padding: 40px; font-size: 1.2rem; color: #666;">⚠️ هیچ نتیجه‌ای یافت نشد.</div>'''
+    no_result_card = '''<div style="grid-column: 1/-1; text-align: center; padding: 40px; font-size: 1.2rem; color: #666;">⚠️ هیچ نتیجه‌ای یافت نشد. لطفاً عبارت دیگری را امتحان کنید.</div>'''
     cards = [no_result_card]
 else:
     cards = []
     for app in apps:
         title = app.get('title', 'بدون نام')
         dev = app.get('developer', 'نامشخص')
-        rating = app.get('score', 0) or 0
+        score = app.get('score', 0) or 0
         installs = app.get('installs', 'نامشخص')
         app_id = app.get('appId', '')
         url = f"https://play.google.com/store/apps/details?id={app_id}" if app_id else "#"
@@ -81,7 +82,8 @@ else:
             except Exception as e:
                 print(f"خطا در دانلود آیکون {icon_url}: {e}")
         if not icon_b64:
-            icon_b64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23cccccc'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='10' font-family='sans-serif'%3ENo%3C/text%3E%3C/svg%3E"
+            # placeholder داخلی
+            icon_b64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23cccccc'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='10' font-family='sans-serif'%3EN/A%3C/text%3E%3C/svg%3E"
 
         card = f'''
         <div class="card">
@@ -93,7 +95,7 @@ else:
                 </div>
                 <div class="developer">{dev}</div>
                 <div class="meta">
-                    <span class="rating">⭐ {rating}</span>
+                    <span class="rating">⭐ {score}</span>
                     <span class="install">📥 {installs}</span>
                 </div>
             </div>
