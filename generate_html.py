@@ -1,14 +1,14 @@
-import json
-import os
-import time
+import json, os, time
 
-# خواندن اطلاعات ویدیوها از فایل data.json
-with open('data.json', encoding='utf-8') as f:
-    videos = [json.loads(line) for line in f]
+repo = os.environ.get('REPO', '')
 
-repo = os.environ.get('REPO', '')  # نام مخزن از environment variable
+# خواندن داده‌ها (اگر فایل وجود نداشت یا خالی بود)
+if not os.path.exists('data.json') or os.path.getsize('data.json') == 0:
+    videos = []
+else:
+    with open('data.json', encoding='utf-8') as f:
+        videos = [json.loads(line) for line in f if line.strip()]
 
-# قالب HTML (بخش ابتدایی)
 html_header = f'''<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -27,14 +27,25 @@ html_header = f'''<!DOCTYPE html>
         .card:hover {{ transform: translateY(-5px); }}
         .thumb {{ width: 100%; aspect-ratio: 16/9; object-fit: cover; }}
         .info {{ padding: 15px; }}
-        .title {{ font-size: 1rem; font-weight: 600; margin-bottom: 8px; line-height: 1.4; }}
-        .title a {{ text-decoration: none; color: #0f0f0f; }}
+        .title {{ font-size: 1rem; font-weight: 600; margin-bottom: 8px; line-height: 1.4; display: flex; align-items: flex-start; gap: 8px; }}
+        .title a {{ text-decoration: none; color: #0f0f0f; flex: 1; }}
         .title a:hover {{ text-decoration: underline; color: #ff0000; }}
+        .copy-btn {{ background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: 2px; color: #606060; transition: 0.2s; }}
+        .copy-btn:hover {{ color: #ff0000; }}
         .channel {{ color: #606060; font-size: 0.85rem; margin-bottom: 10px; }}
         .details {{ display: flex; justify-content: space-between; font-size: 0.75rem; color: #606060; border-top: 1px solid #e5e5e5; padding-top: 10px; margin-top: 5px; }}
         .footer {{ text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #888; font-size: 0.8rem; }}
         @media (max-width: 600px) {{ .results {{ grid-template-columns: 1fr; }} }}
     </style>
+    <script>
+        function copyLink(url) {{
+            navigator.clipboard.writeText(url).then(() => {{
+                alert('لینک کپی شد!');
+            }}).catch(() => {{
+                prompt('لینک را کپی کنید:', url);
+            }});
+        }}
+    </script>
 </head>
 <body>
 <div class="container">
@@ -44,46 +55,49 @@ html_header = f'''<!DOCTYPE html>
     </div>
     <div class="results">'''
 
-# ساخت کارت‌های ویدیو
-cards = []
-for v in videos:
-    # ---------- مدت زمان (رفع خطای float) ----------
-    dur_sec = v.get('duration', 0) or 0
-    total_seconds = int(dur_sec)  # تبدیل مستقیم به int
-    hours = total_seconds // 3600
-    minutes = (total_seconds % 3600) // 60
-    seconds = total_seconds % 60
-    if hours > 0:
-        duration_str = f"{hours}:{minutes:02d}:{seconds:02d}"
-    else:
-        duration_str = f"{minutes}:{seconds:02d}"
+if not videos:
+    no_result_card = '''<div style="grid-column: 1/-1; text-align: center; padding: 40px; font-size: 1.2rem; color: #666;">⚠️ هیچ نتیجه‌ای یافت نشد. لطفاً دوباره تلاش کنید.</div>'''
+    cards = [no_result_card]
+else:
+    cards = []
+    for v in videos:
+        # ---------- مدت زمان ----------
+        dur_sec = v.get('duration', 0) or 0
+        total_seconds = int(dur_sec)
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+        if hours > 0:
+            duration_str = f"{hours}:{minutes:02d}:{seconds:02d}"
+        else:
+            duration_str = f"{minutes}:{seconds:02d}"
 
-    # ---------- تعداد بازدید ----------
-    views = v.get('view_count', 0) or 0
-    views_str = f"{views:,}" if views > 0 else "۰"
+        # ---------- تعداد بازدید ----------
+        views = v.get('view_count', 0) or 0
+        views_str = f"{views:,}" if views > 0 else "۰"
 
-    # ---------- آدرس عکس بندانگشتی (حل مشکل اصلی) ----------
-    thumb = ''
-    # روش اول: استفاده از آرایه thumbnails (در حالت --flat-playlist)
-    if 'thumbnails' in v and isinstance(v['thumbnails'], list) and len(v['thumbnails']) > 0:
-        # آخرین عکس در آرایه معمولاً باکیفیت‌ترین است
-        thumb = v['thumbnails'][-1].get('url', '')
-    # روش دوم: کلید قدیمی thumbnail
-    if not thumb and 'thumbnail' in v:
-        thumb = v['thumbnail']
-    # اگر هیچکدام نبود، از تصویر placeholder استفاده کن
-    if not thumb:
-        thumb = "https://placehold.co/320x180?text=No+Image"
+        # ---------- تصویر (رفع کامل مشکل) ----------
+        thumb = ''
+        if 'thumbnails' in v and isinstance(v['thumbnails'], list) and len(v['thumbnails']) > 0:
+            thumb = v['thumbnails'][-1].get('url', '')
+        if not thumb:
+            thumb = v.get('thumbnail', '')
+        if not thumb:
+            thumb = "https://placehold.co/320x180?text=No+Image"
 
-    # ---------- نام کانال (در صورت وجود) ----------
-    uploader = v.get('uploader', 'نامشخص')
+        # ---------- نام کانال ----------
+        uploader = v.get('uploader', 'نامشخص')
+        webpage_url = v['webpage_url']
 
-    # ساخت کارت HTML
-    card = f'''
+        # کارت ویدیو به همراه دکمه کپی
+        card = f'''
         <div class="card">
             <img class="thumb" src="{thumb}" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
             <div class="info">
-                <div class="title"><a href="{v['webpage_url']}" target="_blank">{v['title']}</a></div>
+                <div class="title">
+                    <a href="{webpage_url}" target="_blank">{v['title']}</a>
+                    <button class="copy-btn" onclick="copyLink('{webpage_url}')" title="کپی لینک">📋</button>
+                </div>
                 <div class="channel">{uploader}</div>
                 <div class="details">
                     <span>👁️ {views_str} بازدید</span>
@@ -91,9 +105,8 @@ for v in videos:
                 </div>
             </div>
         </div>'''
-    cards.append(card)
+        cards.append(card)
 
-# بستن تگ‌های HTML
 html_footer = f'''
     </div>
     <div class="footer">
@@ -103,10 +116,8 @@ html_footer = f'''
 </body>
 </html>'''
 
-# ترکیب نهایی
 full_html = html_header + ''.join(cards) + html_footer
 
-# ذخیره فایل
 os.makedirs('search_results', exist_ok=True)
 with open('search_results/index.html', 'w', encoding='utf-8') as f:
     f.write(full_html)
