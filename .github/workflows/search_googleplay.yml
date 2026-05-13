@@ -52,15 +52,21 @@ jobs:
           REPO: ${{ github.repository }}
         run: python3 generate_googleplay_html.py
 
-      - name: ذخیره در پوشه history (مرتب‌شده با پایتون)
+      - name: ذخیره در پوشه history (دقیقاً مانند یوتیوب)
         run: |
           QUERY="${{ github.event.inputs.query }}"
           DATE_PART=$(date +'%Y.%m.%d')
+          
+          # پایتون: ساخت نام تمیز فارسی (همان منطق یوتیوب)
           SANITIZED=$(python3 -c "
           import re, sys
           q = sys.argv[1]
-          q = re.sub(r'\s+', '_', q.strip())
-          q = re.sub(r'[^\w]', '', q)
+          # فقط کاراکترهای مجاز فارسی/انگلیسی/عدد و فاصله نگه داشته، بقیه حذف
+          q = re.sub(r'[^\w\s]', '', q).strip()
+          q = re.sub(r'\s+', '_', q)
+          # اگر خالی ماند، یک نام پیش‌فرض بگذار
+          if not q:
+              q = 'جستجو'
           print(q[:40])
           " "$QUERY")
           
@@ -73,6 +79,7 @@ jobs:
           done
           mkdir -p "$DIR"
           
+          # کپی فایل‌ها (در صورت وجود)
           if [ -f search_results/googleplay/index.html ]; then
             cp search_results/googleplay/index.html "$DIR/"
           else
