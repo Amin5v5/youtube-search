@@ -6,11 +6,18 @@ on:
       query:
         description: 'عبارت جستجو (مثلاً: تلگرام)'
         required: true
-        default: 'بازی'
+        default: ''
       max_results:
         description: 'تعداد نتایج'
         required: true
         default: '10'
+        type: choice
+        options:
+          - '10'
+          - '20'
+          - '30'
+          - '50'
+          - '100'
 
 jobs:
   search:
@@ -90,7 +97,8 @@ jobs:
 
       - name: رمزگذاری مسیر و نمایش لینک به فایل این جستجو
         run: |
-          ENCODED_DIR=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${{ env.DIR }}', safe=''))")
+          # اصلاح: safe='/' تا اسلش‌ها encode نشوند و لینک به درستی کار کند
+          ENCODED_DIR=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${{ env.DIR }}', safe='/'))")
           echo "### 📁 فایل این جستجو:" >> $GITHUB_STEP_SUMMARY
           echo "[مشاهده فایل](https://github.com/${{ github.repository }}/blob/main/${ENCODED_DIR}/index.html)" >> $GITHUB_STEP_SUMMARY
 
