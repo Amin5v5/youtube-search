@@ -2,7 +2,6 @@ import json, os, time, base64, urllib.request
 
 repo = os.environ.get('REPO', '')
 
-# خواندن داده‌ها
 if not os.path.exists('data_play.json') or os.path.getsize('data_play.json') == 0:
     apps = []
 else:
@@ -82,7 +81,6 @@ else:
             except Exception as e:
                 print(f"خطا در دانلود آیکون {icon_url}: {e}")
         if not icon_b64:
-            # placeholder داخلی
             icon_b64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23cccccc'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='10' font-family='sans-serif'%3EN/A%3C/text%3E%3C/svg%3E"
 
         card = f'''
@@ -115,10 +113,6 @@ full_html = html_header + ''.join(cards) + html_footer
 
 os.makedirs('search_results/googleplay', exist_ok=True)
 with open('search_results/googleplay/index.html', 'w', encoding='utf-8') as f:
-    f.write(full_html)
-
-# کپی در ریشه برای GitHub Pages
-with open('play_index.html', 'w', encoding='utf-8') as f:
     f.write(full_html)
 
 print(f"✅ صفحه گوگل‌پلی ساخته شد. تعداد برنامه‌ها: {len(apps)}")
