@@ -1,4 +1,4 @@
-import json, os, time
+import json, os, time, base64, urllib.request
 
 repo = os.environ.get('REPO', '')
 
@@ -76,23 +76,38 @@ else:
         views = v.get('view_count', 0) or 0
         views_str = f"{views:,}" if views > 0 else "۰"
 
-        # ---------- تصویر (رفع کامل مشکل) ----------
-        thumb = ''
+        # ---------- تصویر (دانلود و تبدیل به base64) ----------
+        thumb_url = ''
         if 'thumbnails' in v and isinstance(v['thumbnails'], list) and len(v['thumbnails']) > 0:
-            thumb = v['thumbnails'][-1].get('url', '')
-        if not thumb:
-            thumb = v.get('thumbnail', '')
-        if not thumb:
-            thumb = "https://placehold.co/320x180?text=No+Image"
+            # بالاترین کیفیت (آخرین عنصر)
+            thumb_url = v['thumbnails'][-1].get('url', '')
+        if not thumb_url:
+            thumb_url = v.get('thumbnail', '')
+
+        thumb_base64 = None
+        if thumb_url:
+            try:
+                # دانلود تصویر از سرور گیت‌هاب (دسترسی آزاد دارد)
+                with urllib.request.urlopen(thumb_url, timeout=10) as resp:
+                    image_data = resp.read()
+                b64 = base64.b64encode(image_data).decode('utf-8')
+                # معمولاً jpg است، ولی می‌توان با توجه به content-type دقیقتر عمل کرد
+                thumb_base64 = f"data:image/jpeg;base64,{b64}"
+            except Exception as e:
+                print(f"خطا در دانلود تصویر {thumb_url}: {e}")
+
+        if not thumb_base64:
+            # تصویر جایگزین (همان placeholder) را هم به base64 تبدیل می‌کنیم تا بدون شبکه هم کار کند
+            # یک تصویر ساده‌ی خاکستری 1x1 پیکسل به صورت base64
+            thumb_base64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='180'%3E%3Crect width='320' height='180' fill='%23cccccc'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='16' font-family='sans-serif'%3ENo Image%3C/text%3E%3C/svg%3E"
 
         # ---------- نام کانال ----------
         uploader = v.get('uploader', 'نامشخص')
         webpage_url = v['webpage_url']
 
-        # کارت ویدیو به همراه دکمه کپی
         card = f'''
         <div class="card">
-            <img class="thumb" src="{thumb}" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
+            <img class="thumb" src="{thumb_base64}" loading="lazy" alt="thumbnail">
             <div class="info">
                 <div class="title">
                     <a href="{webpage_url}" target="_blank">{v['title']}</a>
