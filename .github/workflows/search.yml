@@ -34,19 +34,29 @@ jobs:
             QUERY="ytsearch${MAX}:${QUERY}"
           fi
           echo "جستجو: $QUERY"
-          yt-dlp --flat-playlist --dump-json --playlist-end "$MAX" "$QUERY" | \
-            jq -c '{title, webpage_url, thumbnail, duration, view_count, uploader}' > data.json || echo "[]" > data.json
+          yt-dlp --flat-playlist --dump-json --playlist-end "$MAX" "$QUERY" > data.json || echo "[]" > data.json
 
       - name: اجرای اسکریپت ساخت HTML
         env:
           REPO: ${{ github.repository }}
         run: python3 generate_html.py
 
+      - name: ذخیره در پوشه history
+        run: |
+          # ساخت نام پوشه بر اساس عبارت جستجو و زمان
+          SANITIZED=$(echo "${{ github.event.inputs.query }}" | sed 's/[^a-zA-Z0-9آ-ی۰-۹]/_/g' | cut -c1-50)
+          TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
+          HIST_DIR="history/${SANITIZED}_${TIMESTAMP}"
+          mkdir -p "$HIST_DIR"
+          cp search_results/index.html "$HIST_DIR/"
+          cp data.json "$HIST_DIR/"
+          echo "ذخیره در $HIST_DIR"
+
       - name: ذخیره و آپلود نتایج
         run: |
           cp search_results/index.html ./index.html
           git config user.name "github-actions[bot]"
           git config user.email "bot@github.com"
-          git add search_results/index.html index.html data.json generate_html.py
+          git add search_results/index.html index.html data.json history/
           git commit -m "نتایج جستجو: ${{ github.event.inputs.query }}" || echo "هیچ تغییری لازم نیست"
           git push
