@@ -17,8 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
 
@@ -43,42 +41,22 @@ jobs:
           REPO: ${{ github.repository }}
         run: python3 generate_html.py
 
-      - name: ذخیره در پوشه history (مقاوم)
+      - name: ذخیره در پوشه history
         run: |
-          # حذف پیشوند ytsearchN: از عبارت جستجو
-          CLEAN_QUERY=$(echo "${{ github.event.inputs.query }}" | sed -E 's/^ytsearch[0-9]*://')
-          SANITIZED=$(echo "$CLEAN_QUERY" | tr ' ' '_' | tr -cd 'a-zA-Z0-9آ-ی۰-۹_' | cut -c1-40)
-          DATE_PART=$(date +'%Y.%m.%d')
-          BASE_DIR="history/YouTube/${DATE_PART} - ${SANITIZED}"
-          DIR="$BASE_DIR"
-          COUNTER=1
-          while [ -d "$DIR" ]; do
-            DIR="${BASE_DIR}_${COUNTER}"
-            COUNTER=$((COUNTER + 1))
-          done
-          mkdir -p "$DIR"
-          
-          # کپی فایل‌ها فقط در صورت وجود
-          if [ -f search_results/index.html ]; then
-            cp search_results/index.html "$DIR/"
-          else
-            echo "<html><body><h1>خطا: فایل HTML ساخته نشد</h1></body></html>" > "$DIR/index.html"
-          fi
-          if [ -f data.json ]; then
-            cp data.json "$DIR/"
-          else
-            echo "[]" > "$DIR/data.json"
-          fi
-          echo "ذخیره در $DIR"
+          # ساخت نام پوشه بر اساس عبارت جستجو و زمان
+          SANITIZED=$(echo "${{ github.event.inputs.query }}" | sed 's/[^a-zA-Z0-9آ-ی۰-۹]/_/g' | cut -c1-50)
+          TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
+          HIST_DIR="history/${SANITIZED}_${TIMESTAMP}"
+          mkdir -p "$HIST_DIR"
+          cp search_results/index.html "$HIST_DIR/"
+          cp data.json "$HIST_DIR/"
+          echo "ذخیره در $HIST_DIR"
 
       - name: ذخیره و آپلود نتایج
         run: |
-          # ایجاد فایل index.html برای نمایش نتایج جستجو (فقط اگر وجود نداشته باشد)
-          if [ -f search_results/index.html ]; then
-            cp search_results/index.html ./youtube_results.html
-          fi
+          cp search_results/index.html ./index.html
           git config user.name "github-actions[bot]"
           git config user.email "bot@github.com"
-          git add search_results/ data.json history/ youtube_results.html 2>/dev/null || true
-          git commit -m "نتایج جستجوی یوتیوب: ${{ github.event.inputs.query }}" || echo "هیچ تغییری نبود"
+          git add search_results/index.html index.html data.json history/
+          git commit -m "نتایج جستجو: ${{ github.event.inputs.query }}" || echo "هیچ تغییری لازم نیست"
           git push
