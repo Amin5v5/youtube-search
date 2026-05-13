@@ -1,14 +1,29 @@
-import json, os, time, base64, urllib.request, html
+import json
+import os
+import time
+import base64
+import urllib.request
+import html
+import traceback
 
 repo = os.environ.get('REPO', '')
+output_dir = 'search_results/googleplay'
+output_file = os.path.join(output_dir, 'index.html')
 
-if not os.path.exists('data_play.json') or os.path.getsize('data_play.json') == 0:
-    apps = []
-else:
-    with open('data_play.json', encoding='utf-8') as f:
-        apps = [json.loads(line) for line in f if line.strip()]
+# 1. خواندن داده‌ها با مدیریت خطا
+apps = []
+if os.path.exists('data_play.json') and os.path.getsize('data_play.json') > 0:
+    try:
+        with open('data_play.json', 'r', encoding='utf-8') as f:
+            apps = [json.loads(line) for line in f if line.strip()]
+        print(f"خواندن {len(apps)} برنامه از فایل data_play.json")
+    except Exception as e:
+        print(f"خطا در خواندن فایل JSON: {e}")
 
-html_header = f'''<!DOCTYPE html>
+# 2. تابع اصلی برای ساخت HTML
+def generate_html():
+    # سربرگ HTML
+    html_header = f'''<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -61,37 +76,37 @@ html_header = f'''<!DOCTYPE html>
     </div>
     <div class="results">'''
 
-if not apps:
-    no_result_card = '''<div style="grid-column: 1/-1; text-align: center; padding: 40px; font-size: 1.2rem; color: #666;">⚠️ هیچ نتیجه‌ای یافت نشد. لطفاً عبارت دیگری را امتحان کنید.</div>'''
-    cards = [no_result_card]
-else:
-    cards = []
-    for app in apps:
-        # فرار کردن کاراکترهای HTML برای ایمنی
-        title = html.escape(app.get('title', 'بدون نام'))
-        dev = html.escape(app.get('developer', 'نامشخص'))
-        installs = html.escape(app.get('installs', 'نامشخص'))
-        app_id = app.get('appId', '')
-        url = f"https://play.google.com/store/apps/details?id={html.escape(app_id)}" if app_id else "#"
-        score = app.get('score', 0) or 0
-
-        # آیکون (base64)
-        icon_url = app.get('icon', '')
-        icon_b64 = None
-        if icon_url:
+    # تولید کارت‌ها
+    cards_html = ""
+    if not apps:
+        cards_html = '''<div style="grid-column: 1/-1; text-align: center; padding: 40px; font-size: 1.2rem; color: #666;">⚠️ هیچ نتیجه‌ای یافت نشد. لطفاً عبارت دیگری را امتحان کنید.</div>'''
+    else:
+        for i, app in enumerate(apps):
             try:
-                with urllib.request.urlopen(icon_url, timeout=10) as resp:
-                    image_data = resp.read()
-                b64 = base64.b64encode(image_data).decode('utf-8')
-                icon_b64 = f"data:image/png;base64,{b64}"
-            except Exception:
-                pass
-        if not icon_b64:
-            # placeholder به‌صورت SVG inline
-            icon_b64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23cccccc'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='10' font-family='sans-serif'%3EN/A%3C/text%3E%3C/svg%3E"
+                # ایمن‌سازی تمام داده‌های متنی
+                title = html.escape(str(app.get('title', 'بدون نام')))
+                dev = html.escape(str(app.get('developer', 'نامشخص')))
+                installs = html.escape(str(app.get('installs', 'نامشخص')))
+                app_id = str(app.get('appId', ''))
+                url = f"https://play.google.com/store/apps/details?id={html.escape(app_id)}" if app_id else "#"
+                score = app.get('score', 0) or 0
 
-        # دکمه‌های عمل: کپی لینک گوگل‌پلی و دانلود (با ارسال نام پکیج)
-        card = f'''
+                # پردازش آیکون با تضمین داشتن src معتبر
+                icon_url = app.get('icon', '')
+                # یک placeholder ساده و بی‌خطر که همیشه کار می‌کند
+                icon_b64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23cccccc'/%3E%3C/svg%3E"
+                if icon_url:
+                    try:
+                        req = urllib.request.Request(icon_url, headers={'User-Agent': 'Mozilla/5.0'})
+                        with urllib.request.urlopen(req, timeout=10) as resp:
+                            image_data = resp.read()
+                        b64 = base64.b64encode(image_data).decode('utf-8')
+                        icon_b64 = f"data:image/png;base64,{b64}"
+                    except Exception as e:
+                        print(f"اخطار: دانلود آیکون برای {app_id} شکست خورد. از placeholder استفاده می‌شود.")
+
+                # ساخت یک کارت با src تضمین‌شده
+                card = f'''
         <div class="card">
             <img class="icon" src="{icon_b64}" loading="lazy" alt="icon">
             <div class="info">
@@ -109,9 +124,13 @@ else:
                 </div>
             </div>
         </div>'''
-        cards.append(card)
+                cards_html += card
+            except Exception as e:
+                print(f"خطا در ساخت کارت برای برنامه {i}: {e}")
+                continue
 
-html_footer = f'''
+    # پابرگ HTML
+    html_footer = f'''
     </div>
     <div class="footer">
         ساخته شده توسط GitHub Actions | آخرین به‌روزرسانی: {time.strftime('%Y-%m-%d %H:%M:%S')}
@@ -120,10 +139,32 @@ html_footer = f'''
 </body>
 </html>'''
 
-full_html = html_header + ''.join(cards) + html_footer
+    return html_header + cards_html + html_footer
 
-os.makedirs('search_results/googleplay', exist_ok=True)
-with open('search_results/googleplay/index.html', 'w', encoding='utf-8') as f:
+# 3. اجرای امن با مدیریت خطای کلی
+print("شروع ساخت صفحه HTML...")
+try:
+    full_html = generate_html()
+    # تمیزکاری نهایی برای حذف هرگونه بایت مخفی
+    full_html = full_html.encode('utf-8', errors='ignore').decode('utf-8')
+except Exception as e:
+    print(f"خطای مرگبار در ساخت صفحه: {e}")
+    traceback.print_exc()
+    # ساخت یک صفحه خطا با توضیح فارسی
+    error_msg = html.escape(f"خطای مرگبار در ساخت صفحه: {e}\n{traceback.format_exc()}")
+    full_html = f"""<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head><meta charset="UTF-8"><title>خطا</title></head>
+<body dir="rtl" style="padding:40px; font-family: Tahoma;">
+    <h1 style="color:red;">⚠️ خطا در ساخت صفحه</h1>
+    <pre style="background:#f5f5f5; padding:20px; border-radius:8px; white-space: pre-wrap; word-wrap: break-word;">{error_msg}</pre>
+</body>
+</html>"""
+
+# 4. ذخیره فایل
+os.makedirs(output_dir, exist_ok=True)
+with open(output_file, 'w', encoding='utf-8') as f:
     f.write(full_html)
 
-print(f"✅ صفحه گوگل‌پلی ساخته شد. تعداد برنامه‌ها: {len(apps)}")
+size_kb = len(full_html.encode('utf-8')) / 1024
+print(f"✅ صفحه گوگل‌پلی با موفقیت در {output_file} ذخیره شد. تعداد برنامه‌ها: {len(apps)} | حجم فایل: {size_kb:.1f} KB")
