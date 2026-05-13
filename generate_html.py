@@ -1,13 +1,14 @@
-import json, os, time
+import json
+import os
+import time
 
-repo = os.environ['REPO']
+# خواندن اطلاعات ویدیوها از فایل data.json
+with open('data.json', encoding='utf-8') as f:
+    videos = [json.loads(line) for line in f]
 
-if not os.path.exists('data.json') or os.path.getsize('data.json') == 0:
-    videos = []
-else:
-    with open('data.json', encoding='utf-8') as f:
-        videos = [json.loads(line) for line in f if line.strip()]
+repo = os.environ.get('REPO', '')  # نام مخزن از environment variable
 
+# قالب HTML (بخش ابتدایی)
 html_header = f'''<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -43,47 +44,56 @@ html_header = f'''<!DOCTYPE html>
     </div>
     <div class="results">'''
 
-if not videos:
-    no_result_card = '''<div style="grid-column: 1/-1; text-align: center; padding: 40px; font-size: 1.2rem; color: #666;">⚠️ هیچ نتیجه‌ای یافت نشد. لطفاً دوباره تلاش کنید.</div>'''
-    cards = [no_result_card]
-else:
-    cards = []
-    for v in videos:
-        # اصلاح‌شده برای حل مشکل نوع داده‌ی duration
-        dur_sec = v.get('duration', 0) or 0
-        if isinstance(dur_sec, (int, float)):
-            total_seconds = int(dur_sec)
-            hours = total_seconds // 3600
-            minutes = (total_seconds % 3600) // 60
-            seconds = total_seconds % 60
-            if hours > 0:
-                duration_str = f"{hours}:{minutes:02d}:{seconds:02d}"
-            else:
-                duration_str = f"{minutes}:{seconds:02d}"
-        else:
-            duration_str = "نامشخص"
+# ساخت کارت‌های ویدیو
+cards = []
+for v in videos:
+    # ---------- مدت زمان (رفع خطای float) ----------
+    dur_sec = v.get('duration', 0) or 0
+    total_seconds = int(dur_sec)  # تبدیل مستقیم به int
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+    if hours > 0:
+        duration_str = f"{hours}:{minutes:02d}:{seconds:02d}"
+    else:
+        duration_str = f"{minutes}:{seconds:02d}"
 
-        views = v.get('view_count', 0) or 0
-        views_str = f"{views:,}" if views > 0 else "۰"
+    # ---------- تعداد بازدید ----------
+    views = v.get('view_count', 0) or 0
+    views_str = f"{views:,}" if views > 0 else "۰"
 
-        thumb = v.get('thumbnail', '')
-        if not thumb:
-            thumb = "https://placehold.co/320x180?text=No+Image"
+    # ---------- آدرس عکس بندانگشتی (حل مشکل اصلی) ----------
+    thumb = ''
+    # روش اول: استفاده از آرایه thumbnails (در حالت --flat-playlist)
+    if 'thumbnails' in v and isinstance(v['thumbnails'], list) and len(v['thumbnails']) > 0:
+        # آخرین عکس در آرایه معمولاً باکیفیت‌ترین است
+        thumb = v['thumbnails'][-1].get('url', '')
+    # روش دوم: کلید قدیمی thumbnail
+    if not thumb and 'thumbnail' in v:
+        thumb = v['thumbnail']
+    # اگر هیچکدام نبود، از تصویر placeholder استفاده کن
+    if not thumb:
+        thumb = "https://placehold.co/320x180?text=No+Image"
 
-        card = f'''
+    # ---------- نام کانال (در صورت وجود) ----------
+    uploader = v.get('uploader', 'نامشخص')
+
+    # ساخت کارت HTML
+    card = f'''
         <div class="card">
             <img class="thumb" src="{thumb}" loading="lazy" onerror="this.src='https://placehold.co/320x180?text=Error'">
             <div class="info">
                 <div class="title"><a href="{v['webpage_url']}" target="_blank">{v['title']}</a></div>
-                <div class="channel">{v['uploader']}</div>
+                <div class="channel">{uploader}</div>
                 <div class="details">
                     <span>👁️ {views_str} بازدید</span>
                     <span>⏱️ {duration_str}</span>
                 </div>
             </div>
         </div>'''
-        cards.append(card)
+    cards.append(card)
 
+# بستن تگ‌های HTML
 html_footer = f'''
     </div>
     <div class="footer">
@@ -93,10 +103,16 @@ html_footer = f'''
 </body>
 </html>'''
 
+# ترکیب نهایی
 full_html = html_header + ''.join(cards) + html_footer
 
+# ذخیره فایل
 os.makedirs('search_results', exist_ok=True)
 with open('search_results/index.html', 'w', encoding='utf-8') as f:
+    f.write(full_html)
+
+# کپی در ریشه برای GitHub Pages
+with open('index.html', 'w', encoding='utf-8') as f:
     f.write(full_html)
 
 print(f"✅ صفحه HTML ساخته شد. تعداد ویدیوها: {len(videos)}")
