@@ -1,8 +1,5 @@
 name: 'جستجوی گوگل‌پلی با HTML'
 
-```yaml
-name: 'دانلود APK از گوگل پلی'
-‌
 on:
   workflow_dispatch:
     inputs:
@@ -22,27 +19,6 @@ on:
           - '50'
           - '100'
 
-workflow_dispatch:
-inputs:
-package_name:
-description: 'نام پکیج یا لینک گوگل‌پلی'
-required: true
-default: 'com.whatsapp'
-architecture:
-description: 'معماری پردازنده'
-required: true
-default: 'arm64-v8a'
-options:
-- 'arm64-v8a'
-- 'auto'
-- 'armeabi-v7a'
-- 'x86'
-- 'x86_64'
-max_part_mb:
-description: 'حداکثر حجم قطعه (MB)'
-required: false
-default: '85'
-‌
 jobs:
   search:
     runs-on: ubuntu-latest
@@ -132,26 +108,3 @@ jobs:
           git add search_results/ data_play.json history/ 2>/dev/null || true
           git commit -m "نتایج جستجوی گوگل‌پلی: ${{ github.event.inputs.query }}" || echo "هیچ تغییری نبود"
           git push
-download:
-runs-on: ubuntu-latest
-steps:
-- uses: actions/checkout@v4
-‌
-- name: نصب پیش‌نیازها
-run: |
-sudo apt-get update
-sudo apt-get install -y jq unzip zip curl
-curl -sL https://github.com/EFForg/apkeep/releases/latest/download/apkeep-x86_64-unknown-linux-gnu -o apkeep
-chmod +x apkeep
-sudo mv apkeep /usr/local/bin/apkeep
-‌
-- name: استخراج نام پکیج
-run: |
-INPUT="(echo "INPUT" | sed 's/.id=//; s/&.//')
-else
-PACKAGE="PACKAGE" >>GITHUB_ENV
-‌
-- name: دانلود و پردازش
-run: |
-PACKAGE="{DATE}_{PACKAGE}"
-mkdir -p "$BASE_DIR"
