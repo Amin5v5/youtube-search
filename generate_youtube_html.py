@@ -14,7 +14,8 @@ default_quality = '720p'
 default_max_part = '90'
 default_upload = 'repository (push to repo)'
 
-output_dir = 'search_results/youtube'
+# خروجی را دقیقاً همان مسیری بگذار که workflow history از آن می‌خواند
+output_dir = 'search_results'
 output_file = os.path.join(output_dir, 'index.html')
 
 def make_download_url(video_url):
@@ -29,19 +30,18 @@ def make_download_url(video_url):
     return base + '?' + urllib.parse.urlencode(params, safe='')
 
 def get_thumbnail_url(video):
-    """استخراج آدرس تصویر از خروجی yt-dlp (حالت --flat-playlist)"""
-    # اگر فیلد thumbnail مستقیماً موجود باشد
-    direct = video.get('thumbnail')
-    if direct:
-        return direct
-    # وگرنه از آخرین عنصر آرایهٔ thumbnails استفاده کن
+    """استخراج آدرس تصویر بند انگشتی - دقیقاً همان روش قبلی خودت"""
+    # اولویت با مقدار مستقیم 'thumbnail'
+    if video.get('thumbnail'):
+        return video['thumbnail']
+    # در غیر اینصورت آخرین عنصر آرایهٔ thumbnails
     thumbs = video.get('thumbnails')
     if thumbs and isinstance(thumbs, list) and len(thumbs) > 0:
         return thumbs[-1].get('url', '')
     return ''
 
 videos = []
-# اولویت با data_youtube.json، سپس data.json
+# اولویت با data_youtube.json (اگر وجود داشت)، سپس data.json
 for fname in ('data_youtube.json', 'data.json'):
     if os.path.exists(fname) and os.path.getsize(fname) > 0:
         try:
