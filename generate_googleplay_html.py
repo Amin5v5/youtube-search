@@ -6,32 +6,39 @@ import urllib.request
 import html
 import traceback
 
-repo = os.environ.get('REPO', '')
+repo = os.environ.get('REPO', '')  # مثلاً Amin5v5/search
 download_owner = 'Amin5v5'
 download_repo = 'download'
-download_workflow = 'Google_Play_Downloader.yml'
+download_workflow = 'Google_Play_Downloader.yml'  # نام فایل workflow در مخزن download
 default_arch = 'arm64-v8a'
 default_part_mb = 90
 
 output_dir = 'search_results/googleplay'
 output_file = os.path.join(output_dir, 'index.html')
 
-# خواندن داده‌ها
+# 1. خواندن داده‌ها
 apps = []
 if os.path.exists('data_play.json') and os.path.getsize('data_play.json') > 0:
     try:
         with open('data_play.json', 'r', encoding='utf-8') as f:
             apps = [json.loads(line) for line in f if line.strip()]
-        print(f"خواندن {len(apps)} برنامه")
+        print(f"خواندن {len(apps)} برنامه از فایل data_play.json")
     except Exception as e:
-        print(f"خطا: {e}")
+        print(f"خطا در خواندن فایل JSON: {e}")
 
+# 2. تابع ساخت لینک مستقیم دانلود
 def make_download_url(package_name):
-    return (f"https://github.com/{download_owner}/{download_repo}/actions/workflows/{download_workflow}"
-            f"?package_name={package_name}"
-            f"&architecture={default_arch}"
-            f"&max_part_mb={default_part_mb}")
+    """لینک مستقیم به workflow دانلود با پارامترهای از پیش پر شده"""
+    if not package_name:
+        return "#"
+    return (
+        f"https://github.com/{download_owner}/{download_repo}/actions/workflows/{download_workflow}"
+        f"?package_name={package_name}"
+        f"&architecture={default_arch}"
+        f"&max_part_mb={default_part_mb}"
+    )
 
+# 3. تابع اصلی برای ساخت HTML
 def generate_html():
     html_header = f'''<!DOCTYPE html>
 <html lang="fa" dir="rtl">
@@ -46,7 +53,7 @@ def generate_html():
         h1 {{ text-align: center; color: #34a853; margin-bottom: 20px; font-size: 2rem; }}
         .search-btn {{ text-align: center; margin-bottom: 30px; }}
         .search-btn a {{ background: #34a853; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold; }}
-        .results {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 25px; }}
+        .results {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; }}
         .card {{ background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: 0.2s; display: flex; padding: 15px; align-items: center; }}
         .card:hover {{ transform: translateY(-5px); }}
         .icon {{ width: 64px; height: 64px; object-fit: cover; border-radius: 12px; margin-left: 15px; }}
@@ -67,7 +74,11 @@ def generate_html():
     </style>
     <script>
         function copyLink(url) {{
-            navigator.clipboard.writeText(url).then(() => alert('✅ لینک کپی شد!')).catch(() => prompt('لینک را کپی کنید:', url));
+            navigator.clipboard.writeText(url).then(() => {{
+                alert('لینک کپی شد!');
+            }}).catch(() => {{
+                prompt('لینک را کپی کنید:', url);
+            }});
         }}
     </script>
 </head>
@@ -75,25 +86,30 @@ def generate_html():
 <div class="container">
     <h1>📱 نتایج جستجوی گوگل‌پلی</h1>
     <div class="search-btn">
-        <a href="https://github.com/{repo}/actions/workflows/search_googleplay.yml" target="_blank">🔍 جستجوی جدید</a>
+        <a href="https://github.com/{repo}/actions/workflows/search_googleplay.yml" target="_blank">➕ جستجوی جدید</a>
     </div>
     <div class="results">'''
 
     cards_html = ""
     if not apps:
-        cards_html = '<div style="grid-column:1/-1; text-align:center; padding:40px;">⚠️ هیچ نتیجه‌ای یافت نشد.</div>'
+        cards_html = '''<div style="grid-column: 1/-1; text-align: center; padding: 40px; font-size: 1.2rem; color: #666;">⚠️ هیچ نتیجه‌ای یافت نشد. لطفاً عبارت دیگری را امتحان کنید.</div>'''
     else:
-        for app_info in apps:
+        for i, app in enumerate(apps):
             try:
-                title = html.escape(str(app_info.get('title', 'بدون نام')))
-                dev = html.escape(str(app_info.get('developer', 'نامشخص')))
-                installs = html.escape(str(app_info.get('installs', 'نامشخص')))
-                app_id = str(app_info.get('appId', ''))
+                title = html.escape(str(app.get('title', 'بدون نام')))
+                dev = html.escape(str(app.get('developer', 'نامشخص')))
+                installs = html.escape(str(app.get('installs', 'نامشخص')))
+                app_id = str(app.get('appId', ''))
                 url = f"https://play.google.com/store/apps/details?id={html.escape(app_id)}" if app_id else "#"
-                score = app_info.get('score', 0) or 0
-                size = app_info.get('size', 'نامشخص')
-                size_display = size.replace('M', ' MB').replace('K', ' KB') if size != 'نامشخص' else 'نامشخص'
-                icon_url = app_info.get('icon', '')
+                score = app.get('score', 0) or 0
+                size = app.get('size', 'نامشخص')
+                # نمایش حجم به صورت خوانا
+                if size != 'نامشخص':
+                    size_display = str(size).replace('M', ' MB').replace('K', ' KB')
+                else:
+                    size_display = 'نامشخص'
+
+                icon_url = app.get('icon', '')
                 icon_b64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23cccccc'/%3E%3C/svg%3E"
                 if icon_url:
                     try:
@@ -102,21 +118,22 @@ def generate_html():
                             image_data = resp.read()
                         b64 = base64.b64encode(image_data).decode('utf-8')
                         icon_b64 = f"data:image/png;base64,{b64}"
-                    except:
-                        pass
+                    except Exception as e:
+                        print(f"اخطار: دانلود آیکون برای {app_id} شکست خورد.")
+
                 card = f'''
         <div class="card">
             <img class="icon" src="{icon_b64}" loading="lazy" alt="icon">
             <div class="info">
                 <div class="app-name">
                     <a href="{url}" target="_blank">{title}</a>
-                    <button class="copy-btn" onclick="copyLink('{url}')">📋</button>
+                    <button class="copy-btn" onclick="copyLink('{url}')" title="کپی لینک گوگل‌پلی">📋</button>
                 </div>
                 <div class="developer">{dev}</div>
                 <div class="meta">
-                    <span>⭐ {score}</span>
-                    <span>📥 {installs}</span>
-                    <span>💾 {size_display}</span>
+                    <span class="rating">⭐ {score}</span>
+                    <span class="install">📥 {installs}</span>
+                    <span class="size">💾 {size_display}</span>
                 </div>
                 <div class="action-btns">
                     <a href="{make_download_url(app_id)}" class="download-btn" target="_blank">⬇️ دانلود APK</a>
@@ -125,21 +142,41 @@ def generate_html():
         </div>'''
                 cards_html += card
             except Exception as e:
-                print(f"خطا: {e}")
+                print(f"خطا در ساخت کارت برای برنامه {i}: {e}")
+                continue
 
     html_footer = f'''
     </div>
-    <div class="footer">تولید شده توسط GitHub Actions | {time.strftime('%Y-%m-%d %H:%M:%S')}</div>
+    <div class="footer">
+        ساخته شده توسط GitHub Actions | آخرین به‌روزرسانی: {time.strftime('%Y-%m-%d %H:%M:%S')}
+    </div>
 </div>
 </body>
 </html>'''
+
     return html_header + cards_html + html_footer
 
-os.makedirs(output_dir, exist_ok=True)
+# 4. اجرای امن
+print("شروع ساخت صفحه HTML...")
 try:
-    with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(generate_html())
-    print(f"✅ HTML ذخیره شد. تعداد: {len(apps)}")
+    full_html = generate_html()
+    full_html = full_html.encode('utf-8', errors='ignore').decode('utf-8')
 except Exception as e:
-    print(f"خطا: {e}")
+    print(f"خطای مرگبار در ساخت صفحه: {e}")
     traceback.print_exc()
+    error_msg = html.escape(f"خطای مرگبار در ساخت صفحه: {e}\n{traceback.format_exc()}")
+    full_html = f"""<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head><meta charset="UTF-8"><title>خطا</title></head>
+<body dir="rtl" style="padding:40px; font-family: Tahoma;">
+    <h1 style="color:red;">⚠️ خطا در ساخت صفحه</h1>
+    <pre style="background:#f5f5f5; padding:20px; border-radius:8px; white-space: pre-wrap; word-wrap: break-word;">{error_msg}</pre>
+</body>
+</html>"""
+
+os.makedirs(output_dir, exist_ok=True)
+with open(output_file, 'w', encoding='utf-8') as f:
+    f.write(full_html)
+
+size_kb = len(full_html.encode('utf-8')) / 1024
+print(f"✅ صفحه گوگل‌پلی با موفقیت در {output_file} ذخیره شد. تعداد برنامه‌ها: {len(apps)} | حجم فایل: {size_kb:.1f} KB")
