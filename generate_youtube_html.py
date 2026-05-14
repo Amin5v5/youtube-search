@@ -4,12 +4,11 @@ import time
 import urllib.parse
 import html
 
-repo = os.environ.get('REPO', '')  # مثلاً Amin5v5/search
+repo = os.environ.get('REPO', '')
 download_owner = 'Amin5v5'
 download_repo = 'download'
-download_workflow = 'youtube-download.yml'   # نام فایل ورک‌فلو در مخزن download
+download_workflow = 'youtube-download.yml'   # نام دقیق فایل workflow
 
-# تنظیمات پیش‌فرض برای لینک دانلود
 default_format = 'mp4 (video)'
 default_quality = '720p'
 default_max_part = '90'
@@ -19,7 +18,6 @@ output_dir = 'search_results/youtube'
 output_file = os.path.join(output_dir, 'index.html')
 
 def make_download_url(video_url):
-    """لینک مستقیم اجرای ورک‌فلو دانلود یوتیوب با تمام پارامترها"""
     base = f"https://github.com/{download_owner}/{download_repo}/actions/workflows/{download_workflow}"
     params = {
         'video_url': video_url,
@@ -30,13 +28,11 @@ def make_download_url(video_url):
     }
     return base + '?' + urllib.parse.urlencode(params, safe='')
 
-# خواندن نتایج جستجو (از فایل JSON)
 videos = []
 if os.path.exists('data_youtube.json') and os.path.getsize('data_youtube.json') > 0:
     try:
         with open('data_youtube.json', 'r', encoding='utf-8') as f:
             videos = [json.loads(line) for line in f if line.strip()]
-        print(f"خواندن {len(videos)} ویدئو از فایل data_youtube.json")
     except Exception as e:
         print(f"خطا در خواندن JSON: {e}")
 
@@ -58,9 +54,11 @@ def generate_html():
         .video-card {{ background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; }}
         .thumbnail {{ width: 240px; height: 135px; object-fit: cover; }}
         .info {{ padding: 15px; flex: 1; }}
-        .title {{ font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; }}
+        .title {{ font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }}
         .title a {{ color: #0f0f0f; text-decoration: none; }}
         .title a:hover {{ color: #ff0000; }}
+        .copy-btn {{ background: none; border: none; cursor: pointer; font-size: 1rem; color: #606060; }}
+        .copy-btn:hover {{ color: #34a853; }}
         .channel {{ color: #606060; font-size: 0.9rem; margin-bottom: 8px; }}
         .meta {{ color: #606060; font-size: 0.8rem; }}
         .download-btn {{ background: #cc0000; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }}
@@ -71,6 +69,15 @@ def generate_html():
             .thumbnail {{ width: 100%; height: auto; }}
         }}
     </style>
+    <script>
+        function copyLink(url) {{
+            navigator.clipboard.writeText(url).then(() => {{
+                alert('لینک کپی شد!');
+            }}).catch(() => {{
+                prompt('لینک را کپی کنید:', url);
+            }});
+        }}
+    </script>
 </head>
 <body>
 <div class="container">
@@ -91,7 +98,7 @@ def generate_html():
                 duration = html.escape(str(v.get('duration', '')))
                 views = html.escape(str(v.get('views', '')))
                 thumb = v.get('thumbnail', '')
-                video_url = v.get('url', '')  # لینک کامل ویدئوی یوتیوب (حتماً وجود داشته باشد)
+                video_url = v.get('url', '')
 
                 download_link = make_download_url(video_url)
 
@@ -99,7 +106,10 @@ def generate_html():
         <div class="video-card">
             <img class="thumbnail" src="{thumb}" alt="thumbnail">
             <div class="info">
-                <div class="title"><a href="{video_url}" target="_blank">{title}</a></div>
+                <div class="title">
+                    <a href="{video_url}" target="_blank">{title}</a>
+                    <button class="copy-btn" onclick="copyLink('{video_url}')" title="کپی لینک ویدئو">📋</button>
+                </div>
                 <div class="channel">{channel}</div>
                 <div class="meta">⏱ {duration} | 👁 {views}</div>
                 <a href="{download_link}" target="_blank"><button class="download-btn">⬇️ دانلود</button></a>
