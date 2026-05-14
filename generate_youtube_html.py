@@ -7,14 +7,14 @@ import html
 repo = os.environ.get('REPO', '')
 download_owner = 'Amin5v5'
 download_repo = 'download'
-download_workflow = 'youtube-download.yml'
+download_workflow = 'youtube-download.yml'   # نام دقیق فایل workflow
 
 default_format = 'mp4 (video)'
 default_quality = '720p'
 default_max_part = '90'
 default_upload = 'repository (push to repo)'
 
-output_dir = 'search_results'
+output_dir = 'search_results/youtube'
 output_file = os.path.join(output_dir, 'index.html')
 
 def make_download_url(video_url):
@@ -28,41 +28,13 @@ def make_download_url(video_url):
     }
     return base + '?' + urllib.parse.urlencode(params, safe='')
 
-def get_thumbnail_url(video):
-    """
-    ساخت آدرس تصویر با استفاده از id ویدئو.
-    از mqdefault.jpg استفاده می‌کنیم که همیشه در دسترسه و حجم مناسبی داره.
-    """
-    vid = video.get('id', '')
-    if vid:
-        return f"https://i.ytimg.com/vi/{vid}/mqdefault.jpg"
-    # fallback به روش قبلی فقط در صورت نبود id
-    thumb = video.get('thumbnail')
-    if thumb:
-        return thumb
-    thumbs = video.get('thumbnails')
-    if thumbs and isinstance(thumbs, list) and len(thumbs) > 0:
-        return thumbs[-1].get('url', '')
-    return ''
-
 videos = []
-for fname in ('data_youtube.json', 'data.json'):
-    if os.path.exists(fname) and os.path.getsize(fname) > 0:
-        try:
-            with open(fname, 'r', encoding='utf-8') as f:
-                content = f.read().strip()
-                if content.startswith('['):
-                    videos = json.loads(content)
-                else:
-                    videos = [json.loads(line) for line in content.splitlines() if line.strip()]
-            print(f"خواندن {len(videos)} ویدئو از {fname}")
-            break
-        except Exception as e:
-            print(f"خطا در خواندن {fname}: {e}")
-            videos = []
-
-if not videos:
-    print("⚠️ هیچ داده‌ای برای ساخت صفحه وجود ندارد.")
+if os.path.exists('data_youtube.json') and os.path.getsize('data_youtube.json') > 0:
+    try:
+        with open('data_youtube.json', 'r', encoding='utf-8') as f:
+            videos = [json.loads(line) for line in f if line.strip()]
+    except Exception as e:
+        print(f"خطا در خواندن JSON: {e}")
 
 def generate_html():
     html_header = f'''<!DOCTYPE html>
@@ -100,11 +72,7 @@ def generate_html():
     <script>
         function copyLink(url) {{
             navigator.clipboard.writeText(url).then(() => {{
-                var toast = document.createElement('div');
-                toast.textContent = '✅ لینک کپی شد!';
-                toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:white;padding:10px 20px;border-radius:20px;z-index:9999;opacity:1;transition:opacity 0.5s;';
-                document.body.appendChild(toast);
-                setTimeout(() => {{ toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }}, 1500);
+                alert('لینک کپی شد!');
             }}).catch(() => {{
                 prompt('لینک را کپی کنید:', url);
             }});
@@ -126,16 +94,17 @@ def generate_html():
         for v in videos:
             try:
                 title = html.escape(str(v.get('title', 'بدون عنوان')))
-                channel = html.escape(str(v.get('channel', v.get('uploader', 'نامشخص'))))
-                duration = str(v.get('duration', ''))
-                views = str(v.get('view_count', v.get('views', '')))
-                thumb = get_thumbnail_url(v)
-                video_url = v.get('webpage_url', v.get('url', ''))
+                channel = html.escape(str(v.get('channel', 'نامشخص')))
+                duration = html.escape(str(v.get('duration', '')))
+                views = html.escape(str(v.get('views', '')))
+                thumb = v.get('thumbnail', '')
+                video_url = v.get('url', '')
+
                 download_link = make_download_url(video_url)
 
                 card = f'''
         <div class="video-card">
-            <img class="thumbnail" src="{thumb}" alt="thumbnail" onerror="this.style.display='none'">
+            <img class="thumbnail" src="{thumb}" alt="thumbnail">
             <div class="info">
                 <div class="title">
                     <a href="{video_url}" target="_blank">{title}</a>
