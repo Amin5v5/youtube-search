@@ -1,145 +1,157 @@
-name: دانلود فایل نصبی گوگل پلی
+name: 'جستجوی گوگل‌پلی با HTML'
 
+```yaml
+name: 'دانلود APK از گوگل پلی'
+‌
 on:
   workflow_dispatch:
     inputs:
-      package_name:
-        description: 'Package name (e.g., com.google.android.youtube)'
+      query:
+        description: 'عبارت جستجو (مثلاً: تلگرام)'
         required: true
-        type: string
-      architecture:
-        description: 'Target architecture'
+        default: ''
+      max_results:
+        description: 'تعداد نتایج'
         required: true
+        default: '10'
         type: choice
-        default: 'arm64'
         options:
-          - arm64
-          - armv7
-      merge_splits:
-        description: 'Merge split APKs into single installable APK'
-        required: false
-        type: boolean
-        default: true
-      output_folder:
-        description: 'Output folder (relative to repo root)'
-        required: false
-        type: string
-        default: 'downloads'
+          - '10'
+          - '20'
+          - '30'
+          - '50'
+          - '100'
 
-permissions:
-  contents: write
-
+workflow_dispatch:
+inputs:
+package_name:
+description: 'نام پکیج یا لینک گوگل‌پلی'
+required: true
+default: 'com.whatsapp'
+architecture:
+description: 'معماری پردازنده'
+required: true
+default: 'arm64-v8a'
+options:
+- 'arm64-v8a'
+- 'auto'
+- 'armeabi-v7a'
+- 'x86'
+- 'x86_64'
+max_part_mb:
+description: 'حداکثر حجم قطعه (MB)'
+required: false
+default: '85'
+‌
 jobs:
-  download-apk:
+  search:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 1
+      - uses: actions/checkout@v4
 
-      - name: Create output folder
-        run: mkdir -p "${{ inputs.output_folder }}"
+      - name: نصب کتابخانه گوگل‌پلی
+        run: pip install google-play-scraper
 
-      - name: Install system dependencies
+      - name: دریافت اطلاعات از گوگل‌پلی
         run: |
-          sudo apt-get update
-          sudo apt-get install -y openjdk-17-jre-headless apksigner python3 python3-venv python3-pip curl git
+          python3 << 'EOF'
+          import json, sys
+          from google_play_scraper import search
 
-      - name: Clone gplay-apk-downloader
-        run: |
-          git clone https://github.com/alltechdev/gplay-apk-downloader.git
-          cd gplay-apk-downloader
-          ./setup.sh
+          query = "${{ github.event.inputs.query }}"
+          max_results = int("${{ github.event.inputs.max_results }}")
 
-      - name: Authenticate with Google Play
-        run: |
-          cd gplay-apk-downloader
-          echo "y" | ./gplay auth
-          echo "Authentication completed."
+          try:
+              results = search(query, n_hits=max_results, lang='fa', country='ir')
+          except Exception as e:
+              print(f"خطا: {e}", file=sys.stderr)
+              results = []
 
-      - name: Download APK
-        id: download
+          with open('data_play.json', 'w', encoding='utf-8') as f:
+              for app in results:
+                  f.write(json.dumps(app, ensure_ascii=False) + '\n')
+
+          print(f"✅ تعداد نتایج: {len(results)}")
+          EOF
+
+      - name: اجرای اسکریپت ساخت HTML
+        env:
+          REPO: ${{ github.repository }}
+        run: python3 generate_googleplay_html.py
+
+      - name: ذخیره در پوشه history
         run: |
-          cd gplay-apk-downloader
-          ARCH="${{ inputs.architecture }}"
-          MERGE="${{ inputs.merge_splits }}"
-          OUTPUT_DIR="../${{ inputs.output_folder }}"
+          QUERY="${{ github.event.inputs.query }}"
+          DATE_PART=$(date +'%Y.%m.%d')
+          SANITIZED=$(python3 -c "
+          import re, sys
+          q = sys.argv[1]
+          q = re.sub(r'[^\w\s]', '', q).strip()
+          q = re.sub(r'\s+', '_', q)
+          if not q:
+              q = 'جستجو'
+          print(q[:40])
+          " "$QUERY")
           
-          CMD="./gplay download ${{ inputs.package_name }} -a $ARCH -o $OUTPUT_DIR"
-          if [ "$MERGE" = "true" ]; then
-            CMD="$CMD -m"
-          fi
+          BASE_DIR="history/GooglePlay/${DATE_PART} - ${SANITIZED}"
+          DIR="$BASE_DIR"
+          COUNTER=1
+          while [ -d "$DIR" ]; do
+            DIR="${BASE_DIR}_${COUNTER}"
+            COUNTER=$((COUNTER + 1))
+          done
+          mkdir -p "$DIR"
           
-          echo "Running: $CMD"
-          $CMD
-          
-          # Find downloaded file(s)
-          cd "$OUTPUT_DIR"
-          if [ "$MERGE" = "true" ]; then
-            DOWNLOADED_FILE=$(ls -1 *.apk 2>/dev/null | head -n1)
+          if [ -f search_results/googleplay/index.html ]; then
+            cp search_results/googleplay/index.html "$DIR/"
           else
-            DOWNLOADED_FILE=$(ls -1 *.apk *.zip 2>/dev/null | head -n1)
+            echo "<html><body><h1>خطا: فایل HTML ساخته نشد</h1></body></html>" > "$DIR/index.html"
           fi
-          
-          if [ -z "$DOWNLOADED_FILE" ]; then
-            echo "Error: No file downloaded"
-            exit 1
-          fi
-          
-          echo "downloaded_file_path=$OUTPUT_DIR/$DOWNLOADED_FILE" >> $GITHUB_OUTPUT
-          echo "downloaded_file_name=$DOWNLOADED_FILE" >> $GITHUB_OUTPUT
-
-      - name: Generate timestamp for unique archive
-        id: timestamp
-        run: echo "value=$(date +%Y%m%d_%H%M%S)" >> $GITHUB_OUTPUT
-
-      - name: Create split archive (85MB chunks)
-        run: |
-          DOWNLOADED_FILE="${{ steps.download.outputs.downloaded_file_path }}"
-          TIMESTAMP="${{ steps.timestamp.outputs.value }}"
-          PACKAGE_NAME="${{ inputs.package_name }}"
-          ARCH="${{ inputs.architecture }}"
-          
-          # Create archive name
-          if [ "${{ inputs.merge_splits }}" = "true" ]; then
-            ARCHIVE_NAME="${PACKAGE_NAME}_${ARCH}_merged_${TIMESTAMP}"
+          if [ -f data_play.json ]; then
+            cp data_play.json "$DIR/"
           else
-            ARCHIVE_NAME="${PACKAGE_NAME}_${ARCH}_splits_${TIMESTAMP}"
+            echo "[]" > "$DIR/data_play.json"
           fi
-          
-          cd "${{ inputs.output_folder }}"
-          
-          # Compress and split the downloaded file(s)
-          if [ "${{ inputs.merge_splits }}" = "true" ]; then
-            # Single APK file - split into chunks
-            7z a -mx=3 -v85m "${ARCHIVE_NAME}.7z" "$(basename "$DOWNLOADED_FILE")"
-          else
-            # Multiple split files - use separate archive for each
-            mkdir -p "${ARCHIVE_NAME}_contents"
-            cp "$(basename "$DOWNLOADED_FILE")" "${ARCHIVE_NAME}_contents/"
-            7z a -mx=3 -v85m "${ARCHIVE_NAME}.7z" "${ARCHIVE_NAME}_contents/"
-          fi
-          
-          # Rename single-chunk archive to .7z
-          if [ -f "${ARCHIVE_NAME}.7z.001" ] && [ ! -f "${ARCHIVE_NAME}.7z.002" ]; then
-            mv "${ARCHIVE_NAME}.7z.001" "${ARCHIVE_NAME}.7z"
-          fi
+          echo "ذخیره در $DIR"
+          echo "DIR=$DIR" >> $GITHUB_ENV
 
-      - name: Remove original downloaded file(s)
+      - name: رمزگذاری مسیر و نمایش لینک به فایل این جستجو
         run: |
-          DOWNLOADED_FILE="${{ steps.download.outputs.downloaded_file_path }}"
-          if [[ -n "$DOWNLOADED_FILE" && -f "$DOWNLOADED_FILE" ]]; then
-            rm "$DOWNLOADED_FILE"
-          fi
-          # Also remove any extracted directories
-          rm -rf "${{ inputs.output_folder }}"/*_contents/
+          ENCODED_DIR=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${{ env.DIR }}', safe='/'))")
+          echo "### 📁 فایل این جستجو:" >> $GITHUB_STEP_SUMMARY
+          echo "[مشاهده فایل](https://github.com/${{ github.repository }}/blob/main/${ENCODED_DIR}/index.html)" >> $GITHUB_STEP_SUMMARY
 
-      - name: Commit and push
+      - name: ذخیره و آپلود نتایج
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "${{ inputs.output_folder }}/"
-          git commit -m "Download ${{ inputs.package_name }} (${{ inputs.architecture }}) from Google Play [skip ci]" || echo "No changes to commit"
+          git config user.email "bot@github.com"
+          git add search_results/ data_play.json history/ 2>/dev/null || true
+          git commit -m "نتایج جستجوی گوگل‌پلی: ${{ github.event.inputs.query }}" || echo "هیچ تغییری نبود"
           git push
+download:
+runs-on: ubuntu-latest
+steps:
+- uses: actions/checkout@v4
+‌
+- name: نصب پیش‌نیازها
+run: |
+sudo apt-get update
+sudo apt-get install -y jq unzip zip curl
+curl -sL https://github.com/EFForg/apkeep/releases/latest/download/apkeep-x86_64-unknown-linux-gnu -o apkeep
+chmod +x apkeep
+sudo mv apkeep /usr/local/bin/apkeep
+‌
+- name: استخراج نام پکیج
+run: |
+INPUT="(echo "INPUT" | sed 's/.id=//; s/&.//')
+else
+PACKAGE="PACKAGE" >>GITHUB_ENV
+‌
+- name: دانلود و پردازش
+run: |
+PACKAGE="{DATE}_{PACKAGE}"
+mkdir -p "$BASE_DIR"
