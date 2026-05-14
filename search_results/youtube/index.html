@@ -15,11 +15,9 @@
         .video-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; }
         .thumbnail { width: 240px; height: 135px; object-fit: cover; }
         .info { padding: 15px; flex: 1; }
-        .title { font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .title { font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; }
         .title a { color: #0f0f0f; text-decoration: none; }
         .title a:hover { color: #ff0000; }
-        .copy-btn { background: none; border: none; cursor: pointer; font-size: 1rem; color: #606060; }
-        .copy-btn:hover { color: #34a853; }
         .channel { color: #606060; font-size: 0.9rem; margin-bottom: 8px; }
         .meta { color: #606060; font-size: 0.8rem; }
         .download-btn { background: #cc0000; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
@@ -30,15 +28,6 @@
             .thumbnail { width: 100%; height: auto; }
         }
     </style>
-    <script>
-        function copyLink(url) {
-            navigator.clipboard.writeText(url).then(() => {
-                alert('لینک کپی شد!');
-            }).catch(() => {
-                prompt('لینک را کپی کنید:', url);
-            });
-        }
-    </script>
 </head>
 <body>
 <div class="container">
@@ -49,7 +38,7 @@
     <div class="results"><div style="text-align: center; padding: 40px; color: #666;">⚠️ نتیجه‌ای یافت نشد.</div>
     </div>
     <div class="footer">
-        ساخته شده توسط GitHub Actions | 2026-05-14 08:25:53
+        ساخته شده توسط GitHub Actions | 2026-05-14 08:29:27
     </div>
 </div>
 </body>
