@@ -6,11 +6,17 @@ import urllib.request
 import html
 import traceback
 
-repo = os.environ.get('REPO', '')
+repo = os.environ.get('REPO', '')  # مثلاً Amin5v5/search
+download_owner = 'Amin5v5'
+download_repo = 'download'
+download_workflow = 'download-googleplay.yml'  # نام فایل workflow در مخزن download
+default_arch = 'arm64-v8a'
+default_part_mb = 90
+
 output_dir = 'search_results/googleplay'
 output_file = os.path.join(output_dir, 'index.html')
 
-# 1. خواندن داده‌ها با مدیریت خطا
+# 1. خواندن داده‌ها
 apps = []
 if os.path.exists('data_play.json') and os.path.getsize('data_play.json') > 0:
     try:
@@ -20,9 +26,18 @@ if os.path.exists('data_play.json') and os.path.getsize('data_play.json') > 0:
     except Exception as e:
         print(f"خطا در خواندن فایل JSON: {e}")
 
-# 2. تابع اصلی برای ساخت HTML
+# 2. تابع ساخت لینک مستقیم دانلود
+def make_download_url(package_name):
+    """لینک مستقیم به workflow دانلود با پارامترهای از پیش پر شده"""
+    return (
+        f"https://github.com/{download_owner}/{download_repo}/actions/workflows/{download_workflow}"
+        f"?package_name={package_name}"
+        f"&architecture={default_arch}"
+        f"&max_part_mb={default_part_mb}"
+    )
+
+# 3. تابع اصلی برای ساخت HTML
 def generate_html():
-    # سربرگ HTML
     html_header = f'''<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -63,8 +78,8 @@ def generate_html():
             }});
         }}
         function startDownload(packageName) {{
-            copyLink(packageName);
-            window.open('https://github.com/{repo}/actions/workflows/googleplay.yml', '_blank');
+            var url = 'https://github.com/{download_owner}/{download_repo}/actions/workflows/{download_workflow}?package_name=' + encodeURIComponent(packageName) + '&architecture={default_arch}&max_part_mb={default_part_mb}';
+            window.open(url, '_blank');
         }}
     </script>
 </head>
@@ -76,14 +91,12 @@ def generate_html():
     </div>
     <div class="results">'''
 
-    # تولید کارت‌ها
     cards_html = ""
     if not apps:
         cards_html = '''<div style="grid-column: 1/-1; text-align: center; padding: 40px; font-size: 1.2rem; color: #666;">⚠️ هیچ نتیجه‌ای یافت نشد. لطفاً عبارت دیگری را امتحان کنید.</div>'''
     else:
         for i, app in enumerate(apps):
             try:
-                # ایمن‌سازی تمام داده‌های متنی
                 title = html.escape(str(app.get('title', 'بدون نام')))
                 dev = html.escape(str(app.get('developer', 'نامشخص')))
                 installs = html.escape(str(app.get('installs', 'نامشخص')))
@@ -91,9 +104,7 @@ def generate_html():
                 url = f"https://play.google.com/store/apps/details?id={html.escape(app_id)}" if app_id else "#"
                 score = app.get('score', 0) or 0
 
-                # پردازش آیکون با تضمین داشتن src معتبر
                 icon_url = app.get('icon', '')
-                # یک placeholder ساده و بی‌خطر که همیشه کار می‌کند
                 icon_b64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23cccccc'/%3E%3C/svg%3E"
                 if icon_url:
                     try:
@@ -105,7 +116,6 @@ def generate_html():
                     except Exception as e:
                         print(f"اخطار: دانلود آیکون برای {app_id} شکست خورد. از placeholder استفاده می‌شود.")
 
-                # ساخت یک کارت با src تضمین‌شده
                 card = f'''
         <div class="card">
             <img class="icon" src="{icon_b64}" loading="lazy" alt="icon">
@@ -129,7 +139,6 @@ def generate_html():
                 print(f"خطا در ساخت کارت برای برنامه {i}: {e}")
                 continue
 
-    # پابرگ HTML
     html_footer = f'''
     </div>
     <div class="footer">
@@ -141,16 +150,14 @@ def generate_html():
 
     return html_header + cards_html + html_footer
 
-# 3. اجرای امن با مدیریت خطای کلی
+# 4. اجرای امن
 print("شروع ساخت صفحه HTML...")
 try:
     full_html = generate_html()
-    # تمیزکاری نهایی برای حذف هرگونه بایت مخفی
     full_html = full_html.encode('utf-8', errors='ignore').decode('utf-8')
 except Exception as e:
     print(f"خطای مرگبار در ساخت صفحه: {e}")
     traceback.print_exc()
-    # ساخت یک صفحه خطا با توضیح فارسی
     error_msg = html.escape(f"خطای مرگبار در ساخت صفحه: {e}\n{traceback.format_exc()}")
     full_html = f"""<!DOCTYPE html>
 <html lang="fa" dir="rtl">
@@ -161,7 +168,6 @@ except Exception as e:
 </body>
 </html>"""
 
-# 4. ذخیره فایل
 os.makedirs(output_dir, exist_ok=True)
 with open(output_file, 'w', encoding='utf-8') as f:
     f.write(full_html)
