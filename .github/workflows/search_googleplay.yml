@@ -43,20 +43,17 @@ jobs:
           query = "${{ github.event.inputs.query }}"
           max_results = int("${{ github.event.inputs.max_results }}")
 
-          # مرحله 1: جستجو
           try:
               results = search(query, n_hits=max_results, lang='fa', country='ir')
           except Exception as e:
               print(f"خطا در جستجو: {e}", file=sys.stderr)
               results = []
 
-          # مرحله 2: دریافت جزئیات کامل (به ویژه حجم) برای هر نتیجه
           apps = []
           for item in results:
               app_id = item.get('appId')
               if not app_id:
                   continue
-              # تلاش برای دریافت اطلاعات دقیق
               for attempt in range(3):
                   try:
                       details = app(app_id, lang='fa', country='ir')
@@ -74,7 +71,6 @@ jobs:
                   except Exception as e:
                       print(f"⚠️ تلاش {attempt+1} برای {app_id} ناموفق: {e}", file=sys.stderr)
                       if attempt == 2:
-                          # در صورت شکست نهایی، اطلاعات سطحی را ذخیره کن (بدون حجم)
                           apps.append({
                               "title": item.get("title", "بدون نام"),
                               "developer": item.get("developer", "نامشخص"),
@@ -86,17 +82,16 @@ jobs:
                               "size": "نامشخص"
                           })
                       time.sleep(2)
-              time.sleep(0.5)  # تأخیر بین برنامه‌ها
+              time.sleep(0.5)
 
-          # ذخیره در فایل JSON
           with open('data_play.json', 'w', encoding='utf-8') as f:
               for app_info in apps:
                   f.write(json.dumps(app_info, ensure_ascii=False) + '\n')
 
-          print(f"✅ تعداد نتایج با جزئیات کامل: {len(apps)}")
+          print(f"✅ تعداد نتایج: {len(apps)}")
           EOF
 
-      - name: اجرای اسکریپت ساخت HTML (نمایش حجم)
+      - name: اجرای اسکریپت ساخت HTML
         env:
           REPO: ${{ github.repository }}
         run: python3 generate_googleplay_html.py
@@ -134,16 +129,15 @@ jobs:
           else
             echo "[]" > "$DIR/data_play.json"
           fi
-          echo "ذخیره در $DIR"
           echo "DIR=$DIR" >> $GITHUB_ENV
 
-      - name: نمایش لینک فایل HTML و لینک دانلود مستقیم JSON
+      - name: نمایش لینک‌ها (مشاهده + دانلود مستقیم HTML)
         run: |
           ENCODED_DIR=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${{ env.DIR }}', safe='/'))")
           echo "### 📁 نتایج این جستجو:" >> $GITHUB_STEP_SUMMARY
           echo "[➡️ مشاهده فایل جستجو](https://github.com/${{ github.repository }}/blob/main/${ENCODED_DIR}/index.html)" >> $GITHUB_STEP_SUMMARY
-          JSON_RAW_URL="https://github.com/${{ github.repository }}/raw/main/${ENCODED_DIR}/data_play.json"
-          echo "[⬇️ دانلود این جستجو](${JSON_RAW_URL})" >> $GITHUB_STEP_SUMMARY
+          HTML_RAW_URL="https://github.com/${{ github.repository }}/raw/main/${ENCODED_DIR}/index.html"
+          echo "[⬇️ دانلود این جستجو](${HTML_RAW_URL})" >> $GITHUB_STEP_SUMMARY
 
       - name: ذخیره و آپلود نتایج
         run: |
