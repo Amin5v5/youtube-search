@@ -1,4 +1,4 @@
-name: '🎬 جستجوی یوتیوب'
+name: '🎬 جستجوی یوتیوب با HTML'
 
 on:
   workflow_dispatch:
@@ -177,7 +177,7 @@ jobs:
           COUNT=$(jq -s 'length' data.json)
           echo "✅ تعداد نتایج دریافتی: $COUNT"
 
-      - name: 🌐 ساخت صفحه HTML (با جزئیات ویدیوها)
+      - name: 🌐 ساخت صفحه HTML (با لینک دانلود مستقیم به مخزن download)
         env:
           REPO: ${{ github.repository }}
         run: python3 generate_youtube_html.py
@@ -230,7 +230,6 @@ jobs:
           HTML_RAW_URL="https://github.com/${{ github.repository }}/raw/main/${ENCODED_DIR}/index.html"
           echo "| ⬇️ دانلود این جستجو | [دانلود مستقیم HTML](${HTML_RAW_URL}) |" >> $GITHUB_STEP_SUMMARY
           
-          # اضافه کردن جدول خلاصه (اختیاری)
           COUNT=$(jq -s 'length' data.json 2>/dev/null || echo "0")
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📊 خلاصه جستجو" >> $GITHUB_STEP_SUMMARY
