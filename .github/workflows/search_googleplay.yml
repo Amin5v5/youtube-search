@@ -1,14 +1,14 @@
-name: 'جستجوی گوگل‌پلی با HTML'
+name: '🔍 جستجوی گوگل‌پلی با HTML'
 
 on:
   workflow_dispatch:
     inputs:
       query:
-        description: 'عبارت جستجو (مثلاً: تلگرام)'
+        description: '🎯 عبارت جستجو (مثلاً: تلگرام)'
         required: true
         default: ''
       max_results:
-        description: 'تعداد نتایج'
+        description: '📊 تعداد نتایج'
         required: true
         type: choice
         options:
@@ -31,10 +31,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: نصب کتابخانه گوگل‌پلی
+      - name: 📦 نصب کتابخانه گوگل‌پلی
         run: pip install google-play-scraper
 
-      - name: دریافت اطلاعات از گوگل‌پلی (شامل حجم)
+      - name: 🎯 دریافت اطلاعات کامل (شامل حجم)
         run: |
           python3 << 'EOF'
           import json, sys, time
@@ -46,7 +46,7 @@ jobs:
           try:
               results = search(query, n_hits=max_results, lang='fa', country='ir')
           except Exception as e:
-              print(f"خطا در جستجو: {e}", file=sys.stderr)
+              print(f"⚠️ خطا در جستجو: {e}", file=sys.stderr)
               results = []
 
           apps = []
@@ -57,6 +57,9 @@ jobs:
               for attempt in range(3):
                   try:
                       details = app(app_id, lang='fa', country='ir')
+                      size_val = details.get("size", "")
+                      if not size_val or "نامشخص" in str(size_val):
+                          size_val = ""
                       apps.append({
                           "title": details.get("title", "بدون نام"),
                           "developer": details.get("developer", "نامشخص"),
@@ -65,7 +68,7 @@ jobs:
                           "installs": details.get("installs", "نامشخص"),
                           "icon": details.get("icon", ""),
                           "url": f"https://play.google.com/store/apps/details?id={app_id}",
-                          "size": details.get("size", "نامشخص")
+                          "size": size_val
                       })
                       break
                   except Exception as e:
@@ -79,7 +82,7 @@ jobs:
                               "installs": item.get("installs", "نامشخص"),
                               "icon": item.get("icon", ""),
                               "url": item.get("url", ""),
-                              "size": "نامشخص"
+                              "size": ""
                           })
                       time.sleep(2)
               time.sleep(0.5)
@@ -91,12 +94,12 @@ jobs:
           print(f"✅ تعداد نتایج: {len(apps)}")
           EOF
 
-      - name: اجرای اسکریپت ساخت HTML
+      - name: 🌐 ساخت صفحه HTML (بدون نمایش حجم نامشخص)
         env:
           REPO: ${{ github.repository }}
         run: python3 generate_googleplay_html.py
 
-      - name: ذخیره در پوشه history
+      - name: 📁 ذخیره در پوشه history
         run: |
           QUERY="${{ github.event.inputs.query }}"
           DATE_PART=$(date +'%Y.%m.%d')
@@ -122,7 +125,7 @@ jobs:
           if [ -f search_results/googleplay/index.html ]; then
             cp search_results/googleplay/index.html "$DIR/"
           else
-            echo "<html><body><h1>خطا: فایل HTML ساخته نشد</h1></body></html>" > "$DIR/index.html"
+            echo "<html><body><h1>⚠️ خطا: فایل HTML ساخته نشد</h1></body></html>" > "$DIR/index.html"
           fi
           if [ -f data_play.json ]; then
             cp data_play.json "$DIR/"
@@ -131,7 +134,7 @@ jobs:
           fi
           echo "DIR=$DIR" >> $GITHUB_ENV
 
-      - name: نمایش لینک‌ها (مشاهده + دانلود مستقیم HTML)
+      - name: 🔗 نمایش لینک‌ها (مشاهده + دانلود مستقیم HTML)
         run: |
           ENCODED_DIR=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${{ env.DIR }}', safe='/'))")
           echo "### 📁 نتایج این جستجو:" >> $GITHUB_STEP_SUMMARY
@@ -139,10 +142,10 @@ jobs:
           HTML_RAW_URL="https://github.com/${{ github.repository }}/raw/main/${ENCODED_DIR}/index.html"
           echo "[⬇️ دانلود این جستجو](${HTML_RAW_URL})" >> $GITHUB_STEP_SUMMARY
 
-      - name: ذخیره و آپلود نتایج
+      - name: 💾 ذخیره و آپلود نتایج
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "bot@github.com"
           git add search_results/ data_play.json history/ 2>/dev/null || true
-          git commit -m "نتایج جستجوی گوگل‌پلی: ${{ github.event.inputs.query }}" || echo "هیچ تغییری نبود"
+          git commit -m "✅ نتایج جستجو: ${{ github.event.inputs.query }}" || echo "هیچ تغییری نبود"
           git push
