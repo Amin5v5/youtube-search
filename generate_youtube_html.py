@@ -1,73 +1,41 @@
-import json
-import os
-import time
-import urllib.parse
-import html
+import json, os, time, base64, urllib.request
 
 repo = os.environ.get('REPO', '')
-download_owner = 'Amin5v5'
-download_repo = 'download'
-download_workflow = 'youtube-download.yml'   # نام دقیق فایل workflow
 
-default_format = 'mp4 (video)'
-default_quality = '720p'
-default_max_part = '90'
-default_upload = 'repository (push to repo)'
+if not os.path.exists('data.json') or os.path.getsize('data.json') == 0:
+    videos = []
+else:
+    with open('data.json', encoding='utf-8') as f:
+        videos = [json.loads(line) for line in f if line.strip()]
 
-output_dir = 'search_results/youtube'
-output_file = os.path.join(output_dir, 'index.html')
-
-def make_download_url(video_url):
-    base = f"https://github.com/{download_owner}/{download_repo}/actions/workflows/{download_workflow}"
-    params = {
-        'video_url': video_url,
-        'output_format': default_format,
-        'desired_quality': default_quality,
-        'max_part_mb': default_max_part,
-        'upload_method': default_upload
-    }
-    return base + '?' + urllib.parse.urlencode(params, safe='')
-
-videos = []
-if os.path.exists('data_youtube.json') and os.path.getsize('data_youtube.json') > 0:
-    try:
-        with open('data_youtube.json', 'r', encoding='utf-8') as f:
-            videos = [json.loads(line) for line in f if line.strip()]
-    except Exception as e:
-        print(f"خطا در خواندن JSON: {e}")
-
-def generate_html():
-    html_header = f'''<!DOCTYPE html>
+html_header = f'''<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نتایج جستجوی یوتیوب</title>
+    <title>نتایج جستجو – یوتیوب</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: Tahoma, sans-serif; background: #f5f5f5; padding: 20px; }}
-        .container {{ max-width: 1000px; margin: 0 auto; }}
-        h1 {{ text-align: center; color: #ff0000; margin-bottom: 20px; }}
+        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f9f9f9; padding: 20px; }}
+        .container {{ max-width: 1200px; margin: 0 auto; }}
+        h1 {{ text-align: center; color: #ff0000; margin-bottom: 20px; font-size: 2rem; }}
         .search-btn {{ text-align: center; margin-bottom: 30px; }}
-        .search-btn a {{ background: #ff0000; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: bold; }}
-        .results {{ display: flex; flex-direction: column; gap: 20px; }}
-        .video-card {{ background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; }}
-        .thumbnail {{ width: 240px; height: 135px; object-fit: cover; }}
-        .info {{ padding: 15px; flex: 1; }}
-        .title {{ font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }}
-        .title a {{ color: #0f0f0f; text-decoration: none; }}
-        .title a:hover {{ color: #ff0000; }}
-        .copy-btn {{ background: none; border: none; cursor: pointer; font-size: 1rem; color: #606060; }}
-        .copy-btn:hover {{ color: #34a853; }}
-        .channel {{ color: #606060; font-size: 0.9rem; margin-bottom: 8px; }}
-        .meta {{ color: #606060; font-size: 0.8rem; }}
-        .download-btn {{ background: #cc0000; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }}
-        .download-btn:hover {{ background: #990000; }}
-        .footer {{ text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #888; }}
-        @media (max-width: 600px) {{
-            .video-card {{ flex-direction: column; }}
-            .thumbnail {{ width: 100%; height: auto; }}
-        }}
+        .search-btn a {{ background: #ff0000; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold; }}
+        .results {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; }}
+        .card {{ background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: 0.2s; }}
+        .card:hover {{ transform: translateY(-5px); }}
+        .thumb {{ width: 100%; aspect-ratio: 16/9; object-fit: cover; }}
+        .info {{ padding: 15px; }}
+        .title {{ font-size: 1rem; font-weight: 600; margin-bottom: 8px; line-height: 1.4; display: flex; align-items: flex-start; gap: 8px; }}
+        .title a {{ text-decoration: none; color: #0f0f0f; flex: 1; }}
+        .title a:hover {{ text-decoration: underline; color: #ff0000; }}
+        .action-btns {{ display: flex; gap: 5px; margin-top: 5px; }}
+        .copy-btn, .download-btn {{ background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: 2px 5px; color: #606060; transition: 0.2s; }}
+        .copy-btn:hover, .download-btn:hover {{ color: #ff0000; }}
+        .channel {{ color: #606060; font-size: 0.85rem; margin-bottom: 10px; }}
+        .details {{ display: flex; justify-content: space-between; font-size: 0.75rem; color: #606060; border-top: 1px solid #e5e5e5; padding-top: 10px; margin-top: 5px; }}
+        .footer {{ text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #888; font-size: 0.8rem; }}
+        @media (max-width: 600px) {{ .results {{ grid-template-columns: 1fr; }} }}
     </style>
     <script>
         function copyLink(url) {{
@@ -77,69 +45,94 @@ def generate_html():
                 prompt('لینک را کپی کنید:', url);
             }});
         }}
+        function startDownload(url) {{
+            copyLink(url);
+            window.open('https://github.com/{repo}/actions/workflows/youtube.yml', '_blank');
+        }}
     </script>
 </head>
 <body>
 <div class="container">
-    <h1>🎬 نتایج جستجوی یوتیوب</h1>
+    <h1>🎬 نتایج جستجو</h1>
     <div class="search-btn">
         <a href="https://github.com/{repo}/actions/workflows/search_youtube.yml" target="_blank">➕ جستجوی جدید</a>
     </div>
     <div class="results">'''
 
-    cards = ""
-    if not videos:
-        cards = '''<div style="text-align: center; padding: 40px; color: #666;">⚠️ نتیجه‌ای یافت نشد.</div>'''
-    else:
-        for v in videos:
+if not videos:
+    no_result_card = '''<div style="grid-column: 1/-1; text-align: center; padding: 40px; font-size: 1.2rem; color: #666;">⚠️ هیچ نتیجه‌ای یافت نشد. لطفاً دوباره تلاش کنید.</div>'''
+    cards = [no_result_card]
+else:
+    cards = []
+    for v in videos:
+        dur_sec = v.get('duration', 0) or 0
+        total_seconds = int(dur_sec)
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+        if hours > 0:
+            duration_str = f"{hours}:{minutes:02d}:{seconds:02d}"
+        else:
+            duration_str = f"{minutes}:{seconds:02d}"
+
+        views = v.get('view_count', 0) or 0
+        views_str = f"{views:,}" if views > 0 else "۰"
+
+        thumb_url = ''
+        if 'thumbnails' in v and isinstance(v['thumbnails'], list) and len(v['thumbnails']) > 0:
+            thumb_url = v['thumbnails'][-1].get('url', '')
+        if not thumb_url:
+            thumb_url = v.get('thumbnail', '')
+
+        thumb_base64 = None
+        if thumb_url:
             try:
-                title = html.escape(str(v.get('title', 'بدون عنوان')))
-                channel = html.escape(str(v.get('channel', 'نامشخص')))
-                duration = html.escape(str(v.get('duration', '')))
-                views = html.escape(str(v.get('views', '')))
-                thumb = v.get('thumbnail', '')
-                video_url = v.get('url', '')
+                with urllib.request.urlopen(thumb_url, timeout=10) as resp:
+                    image_data = resp.read()
+                b64 = base64.b64encode(image_data).decode('utf-8')
+                thumb_base64 = f"data:image/jpeg;base64,{b64}"
+            except Exception as e:
+                print(f"خطا در دانلود تصویر {thumb_url}: {e}")
 
-                download_link = make_download_url(video_url)
+        if not thumb_base64:
+            thumb_base64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='180'%3E%3Crect width='320' height='180' fill='%23cccccc'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='16' font-family='sans-serif'%3ENo Image%3C/text%3E%3C/svg%3E"
 
-                card = f'''
-        <div class="video-card">
-            <img class="thumbnail" src="{thumb}" alt="thumbnail">
+        uploader = v.get('uploader', 'نامشخص')
+        webpage_url = v['webpage_url']
+
+        card = f'''
+        <div class="card">
+            <img class="thumb" src="{thumb_base64}" loading="lazy" alt="thumbnail">
             <div class="info">
                 <div class="title">
-                    <a href="{video_url}" target="_blank">{title}</a>
-                    <button class="copy-btn" onclick="copyLink('{video_url}')" title="کپی لینک ویدئو">📋</button>
+                    <a href="{webpage_url}" target="_blank">{v['title']}</a>
                 </div>
-                <div class="channel">{channel}</div>
-                <div class="meta">⏱ {duration} | 👁 {views}</div>
-                <a href="{download_link}" target="_blank"><button class="download-btn">⬇️ دانلود</button></a>
+                <div class="channel">{uploader}</div>
+                <div class="action-btns">
+                    <button class="copy-btn" onclick="copyLink('{webpage_url}')" title="کپی لینک">📋</button>
+                    <button class="download-btn" onclick="startDownload('{webpage_url}')" title="دانلود با workflow">⬇️ دانلود</button>
+                </div>
+                <div class="details">
+                    <span>👁️ {views_str} بازدید</span>
+                    <span>⏱️ {duration_str}</span>
+                </div>
             </div>
         </div>'''
-                cards += card
-            except Exception as e:
-                print(f"خطا در ساخت کارت: {e}")
+        cards.append(card)
 
-    html_footer = f'''
+html_footer = f'''
     </div>
     <div class="footer">
-        ساخته شده توسط GitHub Actions | {time.strftime('%Y-%m-%d %H:%M:%S')}
+        ساخته شده توسط GitHub Actions | آخرین به‌روزرسانی: {time.strftime('%Y-%m-%d %H:%M:%S')}
     </div>
 </div>
 </body>
 </html>'''
-    return html_header + cards + html_footer
 
-print("ساخت HTML نتایج یوتیوب...")
-try:
-    full_html = generate_html()
-    full_html = full_html.encode('utf-8', errors='ignore').decode('utf-8')
-except Exception as e:
-    print(f"خطا: {e}")
-    full_html = f"<html><body><h1>خطا در ساخت صفحه</h1><pre>{html.escape(str(e))}</pre></body></html>"
+full_html = html_header + ''.join(cards) + html_footer
 
-os.makedirs(output_dir, exist_ok=True)
-with open(output_file, 'w', encoding='utf-8') as f:
+os.makedirs('search_results', exist_ok=True)
+with open('search_results/index.html', 'w', encoding='utf-8') as f:
     f.write(full_html)
 
-size_kb = len(full_html.encode('utf-8')) / 1024
-print(f"✅ صفحه یوتیوب در {output_file} ذخیره شد. تعداد ویدئوها: {len(videos)} | حجم: {size_kb:.1f} KB")
+print(f"✅ صفحه HTML ساخته شد. تعداد ویدیوها: {len(videos)}")
