@@ -21,9 +21,9 @@ if os.path.exists('data_play.json') and os.path.getsize('data_play.json') > 0:
     try:
         with open('data_play.json', 'r', encoding='utf-8') as f:
             apps = [json.loads(line) for line in f if line.strip()]
-        print(f"خواندن {len(apps)} برنامه")
+        print(f"📖 خواندن {len(apps)} برنامه")
     except Exception as e:
-        print(f"خطا در خواندن JSON: {e}")
+        print(f"⚠️ خطا در خواندن JSON: {e}")
 
 def make_download_url(package_name):
     if not package_name:
@@ -92,8 +92,12 @@ def generate_html():
                 app_id = str(app.get('appId', ''))
                 url = f"https://play.google.com/store/apps/details?id={html.escape(app_id)}" if app_id else "#"
                 score = app.get('score', 0) or 0
-                size = app.get('size', 'نامشخص')
-                size_display = size.replace('M', ' MB').replace('K', ' KB') if size != 'نامشخص' else 'نامشخص'
+                size = app.get('size', '')
+                # فقط اگر حجم معتبر و غیر خالی باشد نمایش بده
+                if size and size.strip() and size != "نامشخص":
+                    size_display = f"💾 {size}"
+                else:
+                    size_display = ""
 
                 icon_url = app.get('icon', '')
                 icon_b64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23cccccc'/%3E%3C/svg%3E"
@@ -119,7 +123,7 @@ def generate_html():
                 <div class="meta">
                     <span>⭐ {score}</span>
                     <span>📥 {installs}</span>
-                    <span>💾 {size_display}</span>
+                    {f'<span class="size">{size_display}</span>' if size_display else ''}
                 </div>
                 <div class="action-btns">
                     <a href="{make_download_url(app_id)}" class="download-btn" target="_blank">⬇️ دانلود APK</a>
@@ -128,12 +132,12 @@ def generate_html():
         </div>'''
                 cards_html += card
             except Exception as e:
-                print(f"خطا: {e}")
+                print(f"⚠️ خطا در ساخت کارت: {e}")
 
     html_footer = f'''
     </div>
     <div class="footer">
-        ساخته شده توسط GitHub Actions | {time.strftime('%Y-%m-%d %H:%M:%S')}
+        ✅ ساخته شده توسط GitHub Actions | {time.strftime('%Y-%m-%d %H:%M:%S')}
     </div>
 </div>
 </body>
@@ -146,7 +150,7 @@ try:
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(full_html)
     size_kb = len(full_html.encode('utf-8')) / 1024
-    print(f"✅ صفحه HTML ذخیره شد. تعداد برنامه‌ها: {len(apps)} | حجم: {size_kb:.1f} KB")
+    print(f"✅ صفحه HTML ذخیره شد. تعداد برنامه‌ها: {len(apps)} | حجم فایل: {size_kb:.1f} KB")
 except Exception as e:
-    print(f"❌ خطا: {e}")
+    print(f"❌ خطای مرگبار: {e}")
     traceback.print_exc()
