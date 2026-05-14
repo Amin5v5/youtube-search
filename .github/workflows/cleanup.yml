@@ -1,0 +1,277 @@
+name: '🧹 پاکسازی تاریخچه جستجوها'
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: '🎯 کدام بخش پاک شود؟'
+        required: true
+        type: choice
+        options:
+          - 'Google Play'
+          - 'YouTube'
+          - 'Each'
+        default: 'Each'
+      delete_all:
+        description: '🗑️ حذف همه فایل‌ها (نادیده گرفتن سایر فیلترها)'
+        required: false
+        type: boolean
+        default: false
+      time_range:
+        description: '📅 حذف فایل‌های قدیمی‌تر از'
+        required: false
+        type: choice
+        options:
+          - '۱ روز'
+          - '۷ روز'
+          - '۳۰ روز'
+          - '۳ ماه (۹۰ روز)'
+          - '۱ سال (۳۶۵ روز)'
+          - 'همه (بدون محدودیت)'
+        default: '۳۰ روز'
+      package_name_filter:
+        description: '📦 فیلتر نام جستجو (فقط Google Play) - مثال: بازی'
+        required: false
+        type: string
+        default: ''
+      video_query_filter:
+        description: '🎬 فیلتر عبارت جستجو (فقط YouTube) - مثال: فیلم جدید'
+        required: false
+        type: string
+        default: ''
+      dry_run:
+        description: '🔍 فقط نمایش فایل‌های قابل حذف (بدون حذف واقعی)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⚡️ Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout: |
+            history/
+
+      - name: 📊 محاسبه حجم قبل از پاکسازی
+        id: before
+        run: |
+          SIZE_BEFORE=0
+          if [[ -d history ]]; then
+            SIZE_BEFORE=$(du -sb history | cut -f1)
+          fi
+          echo "SIZE_BEFORE=$SIZE_BEFORE" >> $GITHUB_ENV
+
+      - name: 🔍 یافتن و حذف فایل‌ها (با رعایت فیلترها)
+        id: cleanup
+        run: |
+          TARGET="${{ github.event.inputs.target }}"
+          DELETE_ALL="${{ github.event.inputs.delete_all == 'true' }}"
+          TIME_RANGE="${{ github.event.inputs.time_range }}"
+          PACKAGE_FILTER="${{ github.event.inputs.package_name_filter }}"
+          VIDEO_FILTER="${{ github.event.inputs.video_query_filter }}"
+          DRY_RUN="${{ github.event.inputs.dry_run == 'true' }}"
+
+          # تبدیل بازه زمانی به تعداد روز
+          OLDER_DAYS=0
+          if [[ "$DELETE_ALL" != "true" ]]; then
+            case "$TIME_RANGE" in
+              "۱ روز") OLDER_DAYS=1 ;;
+              "۷ روز") OLDER_DAYS=7 ;;
+              "۳۰ روز") OLDER_DAYS=30 ;;
+              "۳ ماه (۹۰ روز)") OLDER_DAYS=90 ;;
+              "۱ سال (۳۶۵ روز)") OLDER_DAYS=365 ;;
+              "همه (بدون محدودیت)") OLDER_DAYS=0 ;;
+              *) OLDER_DAYS=30 ;;
+            esac
+          fi
+
+          declare -a DIRS=()
+          if [[ "$TARGET" == "Google Play" || "$TARGET" == "Each" ]]; then
+            DIRS+=("history/GooglePlay")
+          fi
+          if [[ "$TARGET" == "YouTube" || "$TARGET" == "Each" ]]; then
+            DIRS+=("history/YouTube")
+          fi
+
+          TO_DELETE=()
+
+          check_folder() {
+            local folder="$1"
+            local type="$2"
+            local dirname=$(basename "$folder")
+
+            if [[ "$DELETE_ALL" == "true" ]]; then
+              TO_DELETE+=("$folder")
+              return
+            fi
+
+            # فیلتر بر اساس تاریخ (نام پوشه)
+            if [[ $OLDER_DAYS -gt 0 ]]; then
+              # استخراج تاریخ از نام پوشه (فرمت: YYYY.MM.DD)
+              date_part=$(echo "$dirname" | grep -oE '^[0-9]{4}\.[0-9]{2}\.[0-9]{2}')
+              if [[ -n "$date_part" ]]; then
+                dir_epoch=$(date -d "${date_part//./-}" +%s 2>/dev/null)
+                if [[ -n "$dir_epoch" ]]; then
+                  now_epoch=$(date +%s)
+                  age_days=$(( (now_epoch - dir_epoch) / 86400 ))
+                  if [[ $age_days -lt $OLDER_DAYS ]]; then
+                    return
+                  fi
+                fi
+              else
+                # اگر فرمت تاریخ استاندارد نبود، حذف نکن (محافظت)
+                return
+              fi
+            fi
+
+            # فیلتر نام جستجو (Google Play)
+            if [[ "$type" == "gp" && -n "$PACKAGE_FILTER" ]]; then
+              if [[ "$dirname" != *"$PACKAGE_FILTER"* ]]; then
+                return
+              fi
+            fi
+
+            # فیلتر عبارت جستجو (YouTube)
+            if [[ "$type" == "yt" && -n "$VIDEO_FILTER" ]]; then
+              if [[ "$dirname" != *"$VIDEO_FILTER"* ]]; then
+                return
+              fi
+            fi
+
+            TO_DELETE+=("$folder")
+          }
+
+          for base in "${DIRS[@]}"; do
+            if [[ ! -d "$base" ]]; then
+              echo "پوشه $base وجود ندارد، ادامه..."
+              continue
+            fi
+            type="gp"
+            [[ "$base" == *"YouTube" ]] && type="yt"
+            for folder in "$base"/*/; do
+              if [[ -d "$folder" ]]; then
+                check_folder "${folder%/}" "$type"
+              fi
+            done
+          done
+
+          COUNT=${#TO_DELETE[@]}
+          echo "COUNT=$COUNT" >> $GITHUB_ENV
+          if [[ $COUNT -eq 0 ]]; then
+            echo "NOTHING_TO_DELETE=true" >> $GITHUB_ENV
+            exit 0
+          fi
+          echo "NOTHING_TO_DELETE=false" >> $GITHUB_ENV
+
+          if [[ "$DRY_RUN" == "true" ]]; then
+            printf "%s\n" "${TO_DELETE[@]}" > to_delete.txt
+            exit 0
+          fi
+
+          for folder in "${TO_DELETE[@]}"; do
+            rm -rf "$folder"
+          done
+
+          # حذف پوشه‌های خالی (فقط زیرپوشه‌های خالی، نه خود base)
+          for base in "${DIRS[@]}"; do
+            if [[ -d "$base" ]]; then
+              find "$base" -mindepth 1 -maxdepth 1 -type d -empty -delete 2>/dev/null || true
+            fi
+          done
+
+          printf "%s\n" "${TO_DELETE[@]}" > to_delete.txt
+
+      - name: 📊 گزارش نهایی با نمایش حجم
+        if: always()
+        run: |
+          SIZE_AFTER=0
+          if [[ -d history ]]; then
+            SIZE_AFTER=$(du -sb history | cut -f1)
+          fi
+          SIZE_BEFORE=${{ env.SIZE_BEFORE }}
+          SIZE_BEFORE=${SIZE_BEFORE:-0}
+          SIZE_AFTER=${SIZE_AFTER:-0}
+          FREED=$((SIZE_BEFORE - SIZE_AFTER))
+
+          SIZE_BEFORE_MB=$(echo "scale=2; $SIZE_BEFORE / 1048576" | bc 2>/dev/null || echo "0")
+          SIZE_AFTER_MB=$(echo "scale=2; $SIZE_AFTER / 1048576" | bc 2>/dev/null || echo "0")
+          FREED_MB=$(echo "scale=2; $FREED / 1048576" | bc 2>/dev/null || echo "0")
+
+          DRY_RUN="${{ github.event.inputs.dry_run == 'true' }}"
+          COUNT="${{ env.COUNT }}"
+          NOTHING="${{ env.NOTHING_TO_DELETE }}"
+          TARGET="${{ github.event.inputs.target }}"
+          DELETE_ALL="${{ github.event.inputs.delete_all }}"
+          TIME_RANGE="${{ github.event.inputs.time_range }}"
+          PACKAGE_FILTER="${{ github.event.inputs.package_name_filter }}"
+          VIDEO_FILTER="${{ github.event.inputs.video_query_filter }}"
+
+          echo "## 📋 گزارش پاکسازی" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### 📊 تغییرات حجم مخزن" >> $GITHUB_STEP_SUMMARY
+          echo "| وضعیت | حجم قبل | حجم بعد | فضای آزاد شده |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|----------|----------|----------------|" >> $GITHUB_STEP_SUMMARY
+          if [[ "$DRY_RUN" == "true" ]]; then
+            echo "| 🔍 حالت خشک | ${SIZE_BEFORE_MB} MB | ${SIZE_AFTER_MB} MB | ${FREED_MB} MB |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| ✅ اجرای واقعی | ${SIZE_BEFORE_MB} MB | ${SIZE_AFTER_MB} MB | ${FREED_MB} MB |" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "$NOTHING" == "true" ]]; then
+            echo "| وضعیت | هدف | توضیح |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| ℹ️ بدون تغییر | $TARGET | هیچ فایلی برای حذف یافت نشد |" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
+          echo "### 🗑️ جزئیات حذف" >> $GITHUB_STEP_SUMMARY
+          echo "| وضعیت | هدف | بازه زمانی | فیلتر نام | تعداد حذف | حالت |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|------|-------------|-----------|-----------|------|" >> $GITHUB_STEP_SUMMARY
+
+          STATUS_ICON="✅ انجام شد"
+          [[ "$DRY_RUN" == "true" ]] && STATUS_ICON="🔍 نمایش (حذف نشد)"
+
+          TIME_DESC="$TIME_RANGE"
+          [[ "$DELETE_ALL" == "true" ]] && TIME_DESC="حذف همه (بدون محدودیت)"
+
+          FILTER_NAME=""
+          [[ -n "$PACKAGE_FILTER" ]] && FILTER_NAME="جستجو: $PACKAGE_FILTER"
+          [[ -n "$VIDEO_FILTER" ]] && FILTER_NAME="عبارت: $VIDEO_FILTER"
+          [[ -z "$FILTER_NAME" ]] && FILTER_NAME="ندارد"
+
+          echo "| $STATUS_ICON | $TARGET | $TIME_DESC | $FILTER_NAME | $COUNT | $([ "$DRY_RUN" == "true" ] && echo "dry-run" || echo "real") |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "$DRY_RUN" != "true" && "$COUNT" -gt 0 ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add history/
+            git commit -m "🧹 Cleanup: removed ${COUNT} items from ${TARGET}, freed ${FREED_MB} MB [skip ci]" || true
+            git push
+            echo "✅ تغییرات به مخزن ارسال شد." >> $GITHUB_STEP_SUMMARY
+          elif [[ "$DRY_RUN" == "true" ]]; then
+            echo "ℹ️ حالت خشک: هیچ تغییری در مخزن اعمال نشد." >> $GITHUB_STEP_SUMMARY
+            if [[ -f to_delete.txt ]]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "### 📄 لیست فایل‌هایی که حذف می‌شدند:" >> $GITHUB_STEP_SUMMARY
+              while IFS= read -r line; do
+                echo "- \`$line\`" >> $GITHUB_STEP_SUMMARY
+              done < to_delete.txt
+            fi
+          else
+            echo "ℹ️ هیچ تغییری برای commit وجود ندارد." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: 🧹 پاکسازی فایل موقت
+        if: always()
+        run: rm -f to_delete.txt
