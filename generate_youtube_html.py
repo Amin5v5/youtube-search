@@ -28,31 +28,20 @@ def make_download_url(video_url):
     }
     return base + '?' + urllib.parse.urlencode(params, safe='')
 
-def get_best_thumbnail(thumbnails):
-    """از بین لیست thumbnailها بهترین کیفیت قابل قبول رو انتخاب می‌کنه"""
-    if not thumbnails:
-        return ''
-    # اولویت: medium, high, standard, maxres, default یا اولین مورد
-    priority = ['medium', 'high', 'standard', 'maxres', 'default']
-    for p in priority:
-        for t in thumbnails:
-            if t.get('id') == p or (t.get('width') and t.get('height')):
-                # چک می‌کنیم اگر resolution تقریبی با p مطابقت داره
-                if p == 'medium' and t.get('width') == 320:
-                    return t['url']
-                if p == 'high' and t.get('width') == 480:
-                    return t['url']
-                if p == 'standard' and t.get('width') == 640:
-                    return t['url']
-                if p == 'maxres' and t.get('width') == 1280:
-                    return t['url']
-                if p == 'default' and t.get('width') == 120:
-                    return t['url']
-    # اگه هیچکدوم نبود، اولین عنصر (یا با بیشترین عرض) رو برمی‌گردونیم
-    best = max(thumbnails, key=lambda t: t.get('width', 0))
-    return best.get('url', '') if best else ''
+def get_thumbnail_url(video):
+    """استخراج آدرس تصویر از خروجی yt-dlp (حالت --flat-playlist)"""
+    # اگر فیلد thumbnail مستقیماً موجود باشد
+    direct = video.get('thumbnail')
+    if direct:
+        return direct
+    # وگرنه از آخرین عنصر آرایهٔ thumbnails استفاده کن
+    thumbs = video.get('thumbnails')
+    if thumbs and isinstance(thumbs, list) and len(thumbs) > 0:
+        return thumbs[-1].get('url', '')
+    return ''
 
 videos = []
+# اولویت با data_youtube.json، سپس data.json
 for fname in ('data_youtube.json', 'data.json'):
     if os.path.exists(fname) and os.path.getsize(fname) > 0:
         try:
@@ -136,16 +125,7 @@ def generate_html():
                 channel = html.escape(str(v.get('channel', v.get('uploader', 'نامشخص'))))
                 duration = str(v.get('duration', ''))
                 views = str(v.get('view_count', v.get('views', '')))
-
-                # استخراج thumbnail با کیفیت خوب
-                thumb = v.get('thumbnail')  # ممکنه مستقیم URL باشه
-                if not thumb:
-                    thumbnails = v.get('thumbnails')
-                    if thumbnails and isinstance(thumbnails, list):
-                        thumb = get_best_thumbnail(thumbnails)
-                if not thumb:
-                    thumb = ''  # fallback
-
+                thumb = get_thumbnail_url(v)
                 video_url = v.get('webpage_url', v.get('url', ''))
                 download_link = make_download_url(video_url)
 
