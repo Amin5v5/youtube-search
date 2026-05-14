@@ -1,20 +1,21 @@
-name: '🔍 جستجوی گوگل‌پلی'
+name: 'جستجوی گوگل‌پلی با HTML'
 
 on:
   workflow_dispatch:
     inputs:
       query:
-        description: '🎯 عبارت جستجو (مثلاً: Github)'
+        description: 'عبارت جستجو (مثلاً: تلگرام)'
         required: true
         default: ''
       max_results:
-        description: '📊 تعداد نتایج'
+        description: 'تعداد نتایج'
         required: true
         type: choice
         options:
           - '10'
           - '20'
           - '30'
+          - '50'
         default: '10'
 
 permissions:
@@ -26,63 +27,80 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: ⚡️ Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
           filter: blob:none
 
-      - name: 🐍 نصب کتابخانه
+      - name: نصب کتابخانه
         run: pip install google-play-scraper
 
-      - name: 🎯 جستجو و دریافت جزئیات
+      - name: دریافت اطلاعات کامل (شامل حجم) با مدیریت خطا
         run: |
           import json, sys, time
           from google_play_scraper import search, app
 
           query = "${{ github.event.inputs.query }}"
-          target_count = int("${{ github.event.inputs.max_results }}")
+          max_results = int("${{ github.event.inputs.max_results }}")
 
-          # جستجوی ساده
+          # مرحله 1: جستجو
           try:
-              results = search(query, n_hits=target_count, lang='fa', country='ir')
+              results = search(query, n_hits=max_results, lang='fa', country='ir')
           except Exception as e:
-              print(f"خطا در جستجو: {e}")
+              print(f"⚠️ خطا در جستجو: {e}", file=sys.stderr)
               results = []
 
           apps = []
+          # مرحله 2: دریافت جزئیات (حجم، امتیاز دقیق، نصب و...) برای هر نتیجه
           for item in results:
               app_id = item.get('appId')
               if not app_id:
                   continue
-              try:
-                  details = app(app_id, lang='fa', country='ir')
-                  apps.append({
-                      "title": details.get("title", "بدون نام"),
-                      "developer": details.get("developer", "نامشخص"),
-                      "appId": app_id,
-                      "score": details.get("score", 0),
-                      "installs": details.get("installs", "نامشخص"),
-                      "icon": details.get("icon", ""),
-                      "url": f"https://play.google.com/store/apps/details?id={app_id}",
-                      "size": details.get("size", "نامشخص"),
-                  })
-              except Exception as e:
-                  print(f"خطا در دریافت جزئیات {app_id}: {e}")
-              time.sleep(0.5)
+              # تلاش برای دریافت اطلاعات کامل
+              for attempt in range(3):
+                  try:
+                      details = app(app_id, lang='fa', country='ir')
+                      apps.append({
+                          "title": details.get("title", "بدون نام"),
+                          "developer": details.get("developer", "نامشخص"),
+                          "appId": app_id,
+                          "score": details.get("score", 0),
+                          "installs": details.get("installs", "نامشخص"),
+                          "icon": details.get("icon", ""),
+                          "url": f"https://play.google.com/store/apps/details?id={app_id}",
+                          "size": details.get("size", "نامشخص")
+                      })
+                      break
+                  except Exception as e:
+                      print(f"⚠️ تلاش {attempt+1} برای {app_id} ناموفق: {e}", file=sys.stderr)
+                      if attempt == 2:
+                          # در صورت شکست نهایی، اطلاعات سطحی را ذخیره کن
+                          apps.append({
+                              "title": item.get("title", "بدون نام"),
+                              "developer": item.get("developer", "نامشخص"),
+                              "appId": app_id,
+                              "score": item.get("score", 0),
+                              "installs": item.get("installs", "نامشخص"),
+                              "icon": item.get("icon", ""),
+                              "url": item.get("url", ""),
+                              "size": "نامشخص"
+                          })
+                      time.sleep(2)
+              time.sleep(0.5)  # تأخیر بین درخواست‌ها
 
+          # ذخیره در فایل JSON
           with open('data_play.json', 'w', encoding='utf-8') as f:
               for app_info in apps:
                   f.write(json.dumps(app_info, ensure_ascii=False) + '\n')
 
-          print(f"✅ {len(apps)} برنامه یافت شد.")
+          print(f"✅ تعداد نتایج نهایی: {len(apps)}")
 
-      - name: 🌐 ساخت HTML با نمایش حجم و لینک دانلود
+      - name: اجرای اسکریپت ساخت HTML (نمایش حجم و لینک دانلود)
         env:
           REPO: ${{ github.repository }}
         run: python3 generate_googleplay_html.py
 
-      - name: 📁 ذخیره در پوشه history
+      - name: ذخیره در پوشه history
         run: |
           QUERY="${{ github.event.inputs.query }}"
           DATE_PART=$(date +'%Y.%m.%d')
@@ -105,11 +123,20 @@ jobs:
           done
           mkdir -p "$DIR"
           
-          cp search_results/googleplay/index.html "$DIR/"
-          cp data_play.json "$DIR/"
+          if [ -f search_results/googleplay/index.html ]; then
+            cp search_results/googleplay/index.html "$DIR/"
+          else
+            echo "<html><body><h1>خطا: فایل HTML ساخته نشد</h1></body></html>" > "$DIR/index.html"
+          fi
+          if [ -f data_play.json ]; then
+            cp data_play.json "$DIR/"
+          else
+            echo "[]" > "$DIR/data_play.json"
+          fi
+          echo "ذخیره در $DIR"
           echo "DIR=$DIR" >> $GITHUB_ENV
 
-      - name: 🔗 نمایش لینک نتایج و لینک دانلود مستقیم JSON
+      - name: نمایش لینک فایل HTML و دانلود مستقیم JSON
         run: |
           ENCODED_DIR=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${{ env.DIR }}', safe='/'))")
           echo "### 📁 نتایج این جستجو:" >> $GITHUB_STEP_SUMMARY
@@ -117,10 +144,10 @@ jobs:
           JSON_RAW_URL="https://github.com/${{ github.repository }}/raw/main/${ENCODED_DIR}/data_play.json"
           echo "[⬇️ دانلود این جستجو](${JSON_RAW_URL})" >> $GITHUB_STEP_SUMMARY
 
-      - name: 💾 ذخیره و آپلود
+      - name: ذخیره و آپلود نتایج
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "bot@github.com"
           git add search_results/ data_play.json history/
-          git commit -m "نتایج جستجو: ${{ github.event.inputs.query }}" || echo "هیچ تغییری نبود"
+          git commit -m "نتایج جستجوی گوگل‌پلی: ${{ github.event.inputs.query }}" || echo "هیچ تغییری نبود"
           git push
