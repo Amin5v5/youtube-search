@@ -4,65 +4,70 @@ import time
 import base64
 import urllib.request
 import html
-import traceback
 
 repo = os.environ.get('REPO', '')
-download_owner = 'Amin5v5'
-download_repo = 'download'
-download_workflow = 'Google_Play_Downloader.yml'
-default_arch = 'arm64-v8a'
-default_part_mb = 90
 
-output_dir = 'search_results/googleplay'
-output_file = os.path.join(output_dir, 'index.html')
+# خواندن داده‌ها
+videos = []
+if os.path.exists('data.json') and os.path.getsize('data.json') > 0:
+    with open('data.json', encoding='utf-8') as f:
+        videos = [json.loads(line) for line in f if line.strip()]
+    print(f"📖 {len(videos)} ویدیو از data.json بارگیری شد.")
+else:
+    print("⚠️ فایل data.json خالی یا وجود ندارد.")
 
-apps = []
-if os.path.exists('data_play.json') and os.path.getsize('data_play.json') > 0:
+# تابع تبدیل تعداد بازدید به رشته با کاما
+def format_views(views):
+    if not views:
+        return "۰"
     try:
-        with open('data_play.json', 'r', encoding='utf-8') as f:
-            apps = [json.loads(line) for line in f if line.strip()]
-        print(f"📖 خواندن {len(apps)} برنامه")
-    except Exception as e:
-        print(f"⚠️ خطا در خواندن JSON: {e}")
+        return f"{int(views):,}"
+    except:
+        return str(views)
 
-def make_download_url(package_name):
-    if not package_name:
-        return "#"
-    return (f"https://github.com/{download_owner}/{download_repo}/actions/workflows/{download_workflow}"
-            f"?package_name={package_name}"
-            f"&architecture={default_arch}"
-            f"&max_part_mb={default_part_mb}")
+# تابع تبدیل ثانیه به HH:MM:SS یا MM:SS
+def format_duration(seconds):
+    if not seconds:
+        return "۰:۰۰"
+    total_seconds = int(seconds)
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    secs = total_seconds % 60
+    if hours > 0:
+        return f"{hours}:{minutes:02d}:{secs:02d}"
+    else:
+        return f"{minutes}:{secs:02d}"
 
-def generate_html():
-    html_header = f'''<!DOCTYPE html>
+# شروع ساخت HTML
+html_header = f'''<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نتایج جستجو – گوگل‌پلی</title>
+    <title>نتایج جستجو – یوتیوب</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f9f9f9; padding: 20px; }}
         .container {{ max-width: 1200px; margin: 0 auto; }}
-        h1 {{ text-align: center; color: #34a853; margin-bottom: 20px; font-size: 2rem; }}
+        h1 {{ text-align: center; color: #ff0000; margin-bottom: 20px; font-size: 2rem; }}
         .search-btn {{ text-align: center; margin-bottom: 30px; }}
-        .search-btn a {{ background: #34a853; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold; }}
-        .results {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 25px; }}
-        .card {{ background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: 0.2s; display: flex; padding: 15px; align-items: center; }}
+        .search-btn a {{ background: #ff0000; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold; }}
+        .results {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; }}
+        .card {{ background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: 0.2s; }}
         .card:hover {{ transform: translateY(-5px); }}
-        .icon {{ width: 64px; height: 64px; object-fit: cover; border-radius: 12px; margin-left: 15px; }}
-        .info {{ flex: 1; }}
-        .app-name {{ font-size: 1.1rem; font-weight: 600; margin-bottom: 5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }}
-        .app-name a {{ text-decoration: none; color: #0f0f0f; }}
-        .app-name a:hover {{ text-decoration: underline; color: #34a853; }}
-        .developer {{ color: #606060; font-size: 0.85rem; margin-bottom: 5px; }}
-        .meta {{ display: flex; justify-content: space-between; font-size: 0.8rem; color: #606060; flex-wrap: wrap; gap: 8px; }}
-        .rating {{ color: #fbbc04; }}
-        .install {{ color: #4285f4; }}
-        .size {{ color: #0f9d58; }}
-        .action-btns {{ margin-top: 8px; }}
-        .download-btn {{ background: #34a853; color: white; border: none; cursor: pointer; font-size: 0.9rem; padding: 6px 12px; border-radius: 6px; text-decoration: none; display: inline-block; font-weight: bold; }}
-        .download-btn:hover {{ background: #2d9147; }}
+        .thumb {{ width: 100%; aspect-ratio: 16/9; object-fit: cover; }}
+        .info {{ padding: 15px; }}
+        .title {{ font-size: 1rem; font-weight: 600; margin-bottom: 8px; line-height: 1.4; display: flex; align-items: flex-start; gap: 8px; }}
+        .title a {{ text-decoration: none; color: #0f0f0f; flex: 1; }}
+        .title a:hover {{ text-decoration: underline; color: #ff0000; }}
+        .channel {{ color: #606060; font-size: 0.85rem; margin-bottom: 10px; word-break: break-word; }}
+        .action-btns {{ display: flex; gap: 5px; margin-top: 5px; }}
+        .copy-btn, .download-btn {{ background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: 4px 8px; border-radius: 6px; transition: 0.2s; }}
+        .copy-btn {{ color: #606060; background: #f1f1f1; }}
+        .copy-btn:hover {{ background: #e0e0e0; color: #ff0000; }}
+        .download-btn {{ color: white; background: #ff0000; border-radius: 6px; }}
+        .download-btn:hover {{ background: #cc0000; }}
+        .details {{ display: flex; justify-content: space-between; font-size: 0.75rem; color: #606060; border-top: 1px solid #e5e5e5; padding-top: 10px; margin-top: 5px; }}
         .footer {{ text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #888; font-size: 0.8rem; }}
         @media (max-width: 600px) {{ .results {{ grid-template-columns: 1fr; }} }}
     </style>
@@ -70,87 +75,91 @@ def generate_html():
         function copyLink(url) {{
             navigator.clipboard.writeText(url).then(() => alert('✅ لینک کپی شد!')).catch(() => prompt('لینک را کپی کنید:', url));
         }}
+        function startDownload(url) {{
+            // لینک را کپی می‌کند و صفحه دانلود را باز می‌کند (workflow دانلود یوتیوب)
+            copyLink(url);
+            window.open('https://github.com/{repo}/actions/workflows/youtube.yml', '_blank');
+        }}
     </script>
 </head>
 <body>
 <div class="container">
-    <h1>📱 نتایج جستجوی گوگل‌پلی</h1>
+    <h1>🎬 نتایج جستجوی یوتیوب</h1>
     <div class="search-btn">
-        <a href="https://github.com/{repo}/actions/workflows/search_googleplay.yml" target="_blank">🔍 جستجوی جدید</a>
+        <a href="https://github.com/{repo}/actions/workflows/search_youtube.yml" target="_blank">➕ جستجوی جدید</a>
     </div>
     <div class="results">'''
 
-    if not apps:
-        cards_html = '<div style="grid-column:1/-1; text-align:center; padding:40px;">⚠️ هیچ نتیجه‌ای یافت نشد.</div>'
-    else:
-        cards_html = ""
-        for app in apps:
-            try:
-                title = html.escape(str(app.get('title', 'بدون نام')))
-                dev = html.escape(str(app.get('developer', 'نامشخص')))
-                installs = html.escape(str(app.get('installs', 'نامشخص')))
-                app_id = str(app.get('appId', ''))
-                url = f"https://play.google.com/store/apps/details?id={html.escape(app_id)}" if app_id else "#"
-                score = app.get('score', 0) or 0
-                size = app.get('size', '')
-                # فقط اگر حجم معتبر و غیر خالی باشد نمایش بده
-                if size and size.strip() and size != "نامشخص":
-                    size_display = f"💾 {size}"
-                else:
-                    size_display = ""
-
-                icon_url = app.get('icon', '')
-                icon_b64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23cccccc'/%3E%3C/svg%3E"
-                if icon_url:
-                    try:
-                        req = urllib.request.Request(icon_url, headers={'User-Agent': 'Mozilla/5.0'})
-                        with urllib.request.urlopen(req, timeout=10) as resp:
-                            image_data = resp.read()
-                        b64 = base64.b64encode(image_data).decode('utf-8')
-                        icon_b64 = f"data:image/png;base64,{b64}"
-                    except:
-                        pass
-
-                card = f'''
+cards_html = ""
+if not videos:
+    cards_html = '<div style="grid-column: 1/-1; text-align: center; padding: 40px;">⚠️ هیچ نتیجه‌ای یافت نشد. لطفاً عبارت دیگری را امتحان کنید.</div>'
+else:
+    for v in videos:
+        try:
+            title = html.escape(v.get('title', 'بدون عنوان'))
+            uploader = html.escape(v.get('uploader', 'نامشخص'))
+            webpage_url = v.get('webpage_url', '#')
+            views = v.get('view_count', 0)
+            duration = v.get('duration', 0)
+            views_str = format_views(views)
+            duration_str = format_duration(duration)
+            
+            # دریافت تصویر بندانگشتی
+            thumb_url = ''
+            if 'thumbnails' in v and isinstance(v['thumbnails'], list) and len(v['thumbnails']) > 0:
+                thumb_url = v['thumbnails'][-1].get('url', '')
+            if not thumb_url:
+                thumb_url = v.get('thumbnail', '')
+            
+            thumb_base64 = None
+            if thumb_url:
+                try:
+                    req = urllib.request.Request(thumb_url, headers={'User-Agent': 'Mozilla/5.0'})
+                    with urllib.request.urlopen(req, timeout=10) as resp:
+                        image_data = resp.read()
+                    b64 = base64.b64encode(image_data).decode('utf-8')
+                    thumb_base64 = f"data:image/jpeg;base64,{b64}"
+                except Exception:
+                    pass
+            
+            if not thumb_base64:
+                thumb_base64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='180'%3E%3Crect width='320' height='180' fill='%23cccccc'/%3E%3C/svg%3E"
+            
+            card = f'''
         <div class="card">
-            <img class="icon" src="{icon_b64}" loading="lazy" alt="icon">
+            <img class="thumb" src="{thumb_base64}" loading="lazy" alt="thumbnail">
             <div class="info">
-                <div class="app-name">
-                    <a href="{url}" target="_blank">{title}</a>
-                    <button class="copy-btn" onclick="copyLink('{url}')">📋</button>
+                <div class="title">
+                    <a href="{webpage_url}" target="_blank">{title}</a>
                 </div>
-                <div class="developer">{dev}</div>
-                <div class="meta">
-                    <span>⭐ {score}</span>
-                    <span>📥 {installs}</span>
-                    {f'<span class="size">{size_display}</span>' if size_display else ''}
-                </div>
+                <div class="channel">{uploader}</div>
                 <div class="action-btns">
-                    <a href="{make_download_url(app_id)}" class="download-btn" target="_blank">⬇️ دانلود APK</a>
+                    <button class="copy-btn" onclick="copyLink('{webpage_url}')" title="کپی لینک">📋 کپی لینک</button>
+                    <button class="download-btn" onclick="startDownload('{webpage_url}')" title="دانلود با workflow">⬇️ دانلود</button>
+                </div>
+                <div class="details">
+                    <span>👁️ {views_str} بازدید</span>
+                    <span>⏱️ {duration_str}</span>
                 </div>
             </div>
         </div>'''
-                cards_html += card
-            except Exception as e:
-                print(f"⚠️ خطا در ساخت کارت: {e}")
+            cards_html += card
+        except Exception as e:
+            print(f"⚠️ خطا در ساخت کارت برای یک ویدیو: {e}")
 
-    html_footer = f'''
+html_footer = f'''
     </div>
     <div class="footer">
-        ✅ ساخته شده توسط GitHub Actions | {time.strftime('%Y-%m-%d %H:%M:%S')}
+        ✅ ساخته شده توسط GitHub Actions | آخرین به‌روزرسانی: {time.strftime('%Y-%m-%d %H:%M:%S')}
     </div>
 </div>
 </body>
 </html>'''
-    return html_header + cards_html + html_footer
 
-os.makedirs(output_dir, exist_ok=True)
-try:
-    full_html = generate_html()
-    with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(full_html)
-    size_kb = len(full_html.encode('utf-8')) / 1024
-    print(f"✅ صفحه HTML ذخیره شد. تعداد برنامه‌ها: {len(apps)} | حجم فایل: {size_kb:.1f} KB")
-except Exception as e:
-    print(f"❌ خطای مرگبار: {e}")
-    traceback.print_exc()
+full_html = html_header + cards_html + html_footer
+
+os.makedirs('search_results', exist_ok=True)
+with open('search_results/index.html', 'w', encoding='utf-8') as f:
+    f.write(full_html)
+
+print(f"✅ صفحه HTML با موفقیت ساخته شد. تعداد ویدیوها: {len(videos)}")
