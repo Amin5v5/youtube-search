@@ -35,7 +35,7 @@ jobs:
       - name: 🐍 نصب کتابخانه
         run: pip install google-play-scraper
 
-      - name: 🎯 جستجو و دریافت جزئیات کامل (بهبودیافته)
+      - name: 🎯 جستجو و دریافت جزئیات کامل (بهبودیافته با مدیریت خطا)
         run: |
           import json, sys, time
           from google_play_scraper import search, app
@@ -58,68 +58,77 @@ jobs:
                       if app_id and app_id not in seen_ids:
                           all_results.append(item)
                           seen_ids.add(app_id)
-              except:
-                  pass
+              except Exception as e:
+                  print(f"⚠️ خطا در جستجوی '{kw}': {e}", file=sys.stderr)
               time.sleep(1)
 
           # اگر هیچ نتیجه‌ای با کلمات جداگانه پیدا نشد، کل عبارت را جستجو کن
           if not all_results:
               try:
                   all_results = search(query, n_hits=target_count, lang='fa', country='ir')
-              except:
-                  pass
+              except Exception as e:
+                  print(f"⚠️ خطا در جستجوی ترکیبی: {e}", file=sys.stderr)
 
-          # دریافت اطلاعات کامل (حجم و ...)
+          if not all_results:
+              print("⚠️ هیچ نتیجه‌ای یافت نشد.")
+              with open('data_play.json', 'w', encoding='utf-8') as f:
+                  pass
+              sys.exit(0)
+
+          # دریافت اطلاعات کامل با تلاش مجدد
           apps = []
-          for item in all_results[:target_count*2]:
+          for idx, item in enumerate(all_results[:target_count*2]):
               app_id = item.get('appId')
               if not app_id:
                   continue
-              try:
-                  details = app(app_id, lang='fa', country='ir')
-                  apps.append({
-                      "title": details.get("title", "بدون نام"),
-                      "developer": details.get("developer", "نامشخص"),
-                      "appId": app_id,
-                      "score": details.get("score", 0),
-                      "installs": details.get("installs", "نامشخص"),
-                      "icon": details.get("icon", ""),
-                      "url": f"https://play.google.com/store/apps/details?id={app_id}",
-                      "size": details.get("size", "نامشخص"),
-                      "version": details.get("version", "نامشخص"),
-                      "updated": details.get("updated", None)
-                  })
-              except:
-                  # اگر نتواست اطلاعات کامل بگیرد، همان اطلاعات سطحی را نگه دار
-                  apps.append({
-                      "title": item.get("title", "بدون نام"),
-                      "developer": item.get("developer", "نامشخص"),
-                      "appId": app_id,
-                      "score": item.get("score", 0),
-                      "installs": item.get("installs", "نامشخص"),
-                      "icon": item.get("icon", ""),
-                      "url": item.get("url", ""),
-                      "size": "نامشخص",
-                      "version": "نامشخص",
-                      "updated": None
-                  })
-              time.sleep(0.5)
+              for attempt in range(3):
+                  try:
+                      details = app(app_id, lang='fa', country='ir')
+                      apps.append({
+                          "title": details.get("title", "بدون نام"),
+                          "developer": details.get("developer", "نامشخص"),
+                          "appId": app_id,
+                          "score": details.get("score", 0),
+                          "installs": details.get("installs", "نامشخص"),
+                          "icon": details.get("icon", ""),
+                          "url": f"https://play.google.com/store/apps/details?id={app_id}",
+                          "size": details.get("size", "نامشخص"),
+                          "version": details.get("version", "نامشخص"),
+                          "updated": details.get("updated", None)
+                      })
+                      break
+                  except Exception as e:
+                      print(f"⚠️ تلاش {attempt+1} برای {app_id} ناموفق: {e}", file=sys.stderr)
+                      if attempt == 2:
+                          apps.append({
+                              "title": item.get("title", "بدون نام"),
+                              "developer": item.get("developer", "نامشخص"),
+                              "appId": app_id,
+                              "score": item.get("score", 0),
+                              "installs": item.get("installs", "نامشخص"),
+                              "icon": item.get("icon", ""),
+                              "url": item.get("url", ""),
+                              "size": "نامشخص",
+                              "version": "نامشخص",
+                              "updated": None
+                          })
+                      time.sleep(2)
+              time.sleep(1)
               if len(apps) >= target_count:
                   break
 
-          # ذخیره در JSON
           with open('data_play.json', 'w', encoding='utf-8') as f:
               for app_info in apps:
                   f.write(json.dumps(app_info, ensure_ascii=False) + '\n')
 
-          print(f"✅ {len(apps)} برنامه یافت شد.")
+          print(f"✅ {len(apps)} برنامه یافت و ذخیره شد.")
 
       - name: 🌐 ساخت HTML نتایج
         env:
           REPO: ${{ github.repository }}
         run: python3 generate_googleplay_html.py
 
-      - name: 📁 ذخیره در پوشه history
+      - name: 📁 ذخیره در پوشه history با نام پویا
         run: |
           QUERY="${{ github.event.inputs.query }}"
           DATE_PART=$(date +'%Y.%m.%d')
@@ -163,7 +172,7 @@ jobs:
           JSON_RAW_URL="https://github.com/${{ github.repository }}/raw/main/${ENCODED_DIR}/data_play.json"
           echo "[⬇️ دانلود مستقیم نتایج (JSON)](${JSON_RAW_URL})" >> $GITHUB_STEP_SUMMARY
 
-      - name: 💾 ذخیره و آپلود
+      - name: 💾 ذخیره و آپلود در مخزن
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "bot@github.com"
