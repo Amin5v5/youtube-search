@@ -1,10 +1,10 @@
-name: '🔍 جستجوی گوگل‌پلی با HTML'
+name: '🔍 جستجوی گوگل‌پلی'
 
 on:
   workflow_dispatch:
     inputs:
       query:
-        description: '🎯 عبارت جستجو (مثلاً: تلگرام)'
+        description: '🎯 عبارت جستجو (مثلا: اینستاگرام)'
         required: true
         default: ''
       max_results:
