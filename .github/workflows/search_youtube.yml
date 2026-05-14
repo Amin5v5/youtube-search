@@ -1,10 +1,10 @@
-name: 'جستجوی یوتیوب با HTML'
+name: 'جستجوی گوگل‌پلی با HTML'
 
 on:
   workflow_dispatch:
     inputs:
       query:
-        description: 'عبارت جستجو (مثلاً: آموزش پایتون)'
+        description: 'عبارت جستجو (مثلاً: تلگرام)'
         required: true
         default: ''
       max_results:
@@ -18,62 +18,6 @@ on:
           - '30'
           - '50'
           - '100'
-      upload_date:
-        description: 'تاریخ آپلود'
-        required: false
-        default: 'any'
-        type: choice
-        options:
-          - 'any (همه)'
-          - 'today (امروز)'
-          - 'week (این هفته)'
-          - 'month (این ماه)'
-          - 'year (امسال)'
-      type_filter:
-        description: 'نوع محتوا'
-        required: false
-        default: 'any'
-        type: choice
-        options:
-          - 'any (همه)'
-          - 'video (ویدیو)'
-          - 'channel (کانال)'
-          - 'playlist (پلی‌لیست)'
-      duration:
-        description: 'مدت‌زمان ویدیو'
-        required: false
-        default: 'any'
-        type: choice
-        options:
-          - 'any (همه)'
-          - 'short (کوتاه < ۴ دقیقه)'
-          - 'long (بلند > ۲۰ دقیقه)'
-      features:
-        description: 'ویژگی‌های خاص'
-        required: false
-        default: 'any'
-        type: choice
-        options:
-          - 'any (همه)'
-          - 'live (پخش زنده)'
-          - '4k'
-          - 'hd'
-          - 'hdr'
-          - 'vr180'
-          - '3d'
-          - '360'
-          - 'location'
-          - 'purchased'
-      sort_by:
-        description: 'مرتب‌سازی بر اساس'
-        required: false
-        default: 'relevance'
-        type: choice
-        options:
-          - 'relevance (مرتبط‌ترین)'
-          - 'upload_date (تاریخ آپلود)'
-          - 'view_count (بازدید)'
-          - 'rating (امتیاز)'
 
 jobs:
   search:
@@ -85,100 +29,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: نصب ابزارها
+      - name: نصب کتابخانه گوگل‌پلی
+        run: pip install google-play-scraper
+
+      - name: دریافت اطلاعات از گوگل‌پلی
         run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
-          pip install yt-dlp
+          python3 << 'EOF'
+          import json, sys
+          from google_play_scraper import search
 
-      - name: ساخت کد SP فیلترها
-        run: |
-          # مپ کردن گزینه‌ها به پارامترهای sp یوتیوب
-          declare -A UPLOAD_DATE_MAP=(
-            ["any (همه)"]=""
-            ["today (امروز)"]="EgIIAg%253D%253D"
-            ["week (این هفته)"]="EgIIAw%253D%253D"
-            ["month (این ماه)"]="EgIIBA%253D%253D"
-            ["year (امسال)"]="EgIIBQ%253D%253D"
-          )
-          declare -A TYPE_MAP=(
-            ["any (همه)"]=""
-            ["video (ویدیو)"]="EgIQAQ%253D%253D"
-            ["channel (کانال)"]="EgIQAg%253D%253D"
-            ["playlist (پلی‌لیست)"]="EgIQAw%253D%253D"
-          )
-          declare -A DURATION_MAP=(
-            ["any (همه)"]=""
-            ["short (کوتاه < ۴ دقیقه)"]="EgIYAQ%253D%253D"
-            ["long (بلند > ۲۰ دقیقه)"]="EgIYAw%253D%253D"
-          )
-          declare -A FEATURES_MAP=(
-            ["any (همه)"]=""
-            ["live (پخش زنده)"]="EgJAAQ%253D%253D"
-            ["4k"]="EgJwAQ%253D%253D"
-            ["hd"]="EgIgAQ%253D%253D"
-            ["hdr"]="EgIgCg%253D%253D"
-            ["vr180"]="EgIgBQ%253D%253D"
-            ["3d"]="EgIgAg%253D%253D"
-            ["360"]="EgIgAw%253D%253D"
-            ["location"]="EgIgBA%253D%253D"
-            ["purchased"]="EgJgAQ%253D%253D"
-          )
-          declare -A SORT_MAP=(
-            ["relevance (مرتبط‌ترین)"]=""
-            ["upload_date (تاریخ آپلود)"]="CAI%253D"
-            ["view_count (بازدید)"]="CAM%253D"
-            ["rating (امتیاز)"]="CAE%253D"
-          )
+          query = "${{ github.event.inputs.query }}"
+          max_results = int("${{ github.event.inputs.max_results }}")
 
-          # دریافت مقادیر انتخاب‌شده
-          UD="${{ github.event.inputs.upload_date }}"
-          TYPE="${{ github.event.inputs.type_filter }}"
-          DUR="${{ github.event.inputs.duration }}"
-          FEAT="${{ github.event.inputs.features }}"
-          SORT="${{ github.event.inputs.sort_by }}"
+          try:
+              results = search(query, n_hits=max_results, lang='fa', country='ir')
+          except Exception as e:
+              print(f"خطا: {e}", file=sys.stderr)
+              results = []
 
-          # ترکیب پارامترها (اولویت: آپلود > نوع > مدت > ویژگی > مرتب‌سازی)
-          SP=""
-          if [ -n "${UPLOAD_DATE_MAP[$UD]}" ]; then
-            SP="${UPLOAD_DATE_MAP[$UD]}"
-          elif [ -n "${TYPE_MAP[$TYPE]}" ]; then
-            SP="${TYPE_MAP[$TYPE]}"
-          elif [ -n "${DURATION_MAP[$DUR]}" ]; then
-            SP="${DURATION_MAP[$DUR]}"
-          elif [ -n "${FEATURES_MAP[$FEAT]}" ]; then
-            SP="${FEATURES_MAP[$FEAT]}"
-          elif [ -n "${SORT_MAP[$SORT]}" ]; then
-            SP="${SORT_MAP[$SORT]}"
-          fi
+          with open('data_play.json', 'w', encoding='utf-8') as f:
+              for app in results:
+                  f.write(json.dumps(app, ensure_ascii=False) + '\n')
 
-          echo "SP=${SP}" >> $GITHUB_ENV
-          echo "SParam: ${SP:-none}"
-
-      - name: دریافت اطلاعات از یوتیوب
-        run: |
-          MAX=${{ github.event.inputs.max_results }}
-          QUERY="${{ github.event.inputs.query }}"
-          
-          # اگر کاربر ytsearch را ننوشته، خودکار اضافه کن
-          if [[ ! "$QUERY" =~ ^ytsearch[0-9]*: ]]; then
-            QUERY="ytsearch${MAX}:${QUERY}"
-          fi
-          
-          echo "جستجو: $QUERY"
-          
-          # اضافه کردن پارامترهای جستجو (sp) در صورت وجود
-          EXTRA_ARGS=""
-          if [ -n "$SP" ]; then
-            EXTRA_ARGS="--extractor-args \"youtube:search_params=${SP}\""
-          fi
-          
-          eval "yt-dlp --flat-playlist --dump-json --playlist-end '$MAX' $EXTRA_ARGS '$QUERY' > data.json || echo '[]' > data.json"
+          print(f"✅ تعداد نتایج: {len(results)}")
+          EOF
 
       - name: اجرای اسکریپت ساخت HTML
         env:
           REPO: ${{ github.repository }}
-        run: python3 generate_youtube_html.py
+        run: python3 generate_googleplay_html.py
 
       - name: ذخیره در پوشه history
         run: |
@@ -187,7 +66,6 @@ jobs:
           SANITIZED=$(python3 -c "
           import re, sys
           q = sys.argv[1]
-          q = re.sub(r'^ytsearch\d*:', '', q)
           q = re.sub(r'[^\w\s]', '', q).strip()
           q = re.sub(r'\s+', '_', q)
           if not q:
@@ -195,7 +73,7 @@ jobs:
           print(q[:40])
           " "$QUERY")
           
-          BASE_DIR="history/YouTube/${DATE_PART} - ${SANITIZED}"
+          BASE_DIR="history/GooglePlay/${DATE_PART} - ${SANITIZED}"
           DIR="$BASE_DIR"
           COUNTER=1
           while [ -d "$DIR" ]; do
@@ -204,22 +82,21 @@ jobs:
           done
           mkdir -p "$DIR"
           
-          if [ -f search_results/index.html ]; then
-            cp search_results/index.html "$DIR/"
+          if [ -f search_results/googleplay/index.html ]; then
+            cp search_results/googleplay/index.html "$DIR/"
           else
             echo "<html><body><h1>خطا: فایل HTML ساخته نشد</h1></body></html>" > "$DIR/index.html"
           fi
-          if [ -f data.json ]; then
-            cp data.json "$DIR/"
+          if [ -f data_play.json ]; then
+            cp data_play.json "$DIR/"
           else
-            echo "[]" > "$DIR/data.json"
+            echo "[]" > "$DIR/data_play.json"
           fi
           echo "ذخیره در $DIR"
           echo "DIR=$DIR" >> $GITHUB_ENV
 
-      - name: رمزگذاری مسیر و نمایش لینک به فایل این جستجو
+      - name: نمایش لینک به فایل‌ها
         run: |
-          # اصلاح: safe='/' تا اسلش‌ها encode نشوند و لینک به درستی کار کند
           ENCODED_DIR=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${{ env.DIR }}', safe='/'))")
           echo "### 📁 فایل این جستجو:" >> $GITHUB_STEP_SUMMARY
           echo "[مشاهده فایل](https://github.com/${{ github.repository }}/blob/main/${ENCODED_DIR}/index.html)" >> $GITHUB_STEP_SUMMARY
@@ -228,6 +105,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "bot@github.com"
-          git add search_results/ data.json history/ 2>/dev/null || true
-          git commit -m "نتایج جستجوی یوتیوب: ${{ github.event.inputs.query }}" || echo "هیچ تغییری نبود"
+          git add search_results/ data_play.json history/ 2>/dev/null || true
+          git commit -m "نتایج جستجوی گوگل‌پلی: ${{ github.event.inputs.query }}" || echo "هیچ تغییری نبود"
           git push
