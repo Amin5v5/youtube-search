@@ -48,3 +48,80 @@ run: |
 PACKAGE="{DATE}_{PACKAGE}"
 mkdir -p "$BASE_DIR"
 ‌
+          mkdir -p /tmp/dl_temp
+          
+          # نکته بسیار مهم: برای کارکرد صحیح باید کوکی در Secrets باشد
+          # اگر کوکی ندارید، دستور زیر با خطا مواجه می‌شود
+          if [ -n "${{ secrets.GPLAY_COOKIES }}" ]; then
+            echo "${{ secrets.GPLAY_COOKIES }}" > /tmp/cookies.txt
+            apkeep -a "$PACKAGE" -c /tmp/cookies.txt /tmp/dl_temp
+          else
+            echo "⚠️ هشدار: کوکی یافت نشد. احتمال شکست دانلود بالا است."
+            apkeep -a "$PACKAGE" /tmp/dl_temp
+          fi
+
+          # پیدا کردن فایل‌های استخراج شده
+          FILE=$(find /tmp/dl_temp -type f \( -name '*.apk' -o -name '*.xapk' -o -name '*.apks' \) | head -1)
+          
+          if [ -z "$FILE" ]; then
+            echo "❌ خطای دانلود: فایلی یافت نشد."
+            exit 1
+          fi
+
+          # پردازش فایل‌های Split APK
+          mkdir -p /tmp/pkg_work
+          if echo "$FILE" | grep -qE '\.(xapk|apks)$'; then
+            unzip -o "$FILE" -d /tmp/pkg_work
+          else
+            cp "$FILE" /tmp/pkg_work/base.apk
+          fi
+
+          # فیلتر کردن بر اساس معماری
+          cd /tmp/pkg_work
+          if [ "$ARCH" != "auto" ]; then
+            # حذف فایل‌هایی که با معماری مورد نظر مطابقت ندارند (به جز base)
+            find . -type f -name "*.apk" ! -name "base.apk" ! -name "*$ARCH*" -delete
+          fi
+
+          # پکیج‌سازی نهایی
+          if [ "$MAX_MB" -gt 0 ]; then
+            # اگر کاربر حجم قطعه تعیین کرده، به صورت تکه‌تکه زیپ شود
+            zip -r -s "${MAX_MB}m" "$BASE_DIR/app_package.apks.zip" ./*.apk
+            # انتقال فایل‌های تکه‌تکه شده به پوشه مقصد
+            mv app_package.zip* "$BASE_DIR/"
+          else
+            # زیپ معمولی
+            zip -r "$BASE_DIR/app_package.apks" ./*.apk
+          fi
+
+          # ایجاد راهنما
+          echo "📦 راهنما: برای نصب از برنامه SAI استفاده کنید." > "$BASE_DIR/README.txt"
+          
+          echo "DEST=$BASE_DIR" >> $GITHUB_ENV
+
+      - name: آپلود در گیت‌هاب
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "bot@github.com"
+          git add downloads/
+          git commit -m "✅ دانلود موفق: ${{ env.PACKAGE }}" || echo "تغییری ایجاد نشد"
+          git push
+```
+
+### تغییرات کلیدی که اعمال کردم:
+1.  **مدیریت خطا:** اضافه کردن دستورات شرطی برای چک کردن وجود فایل.
+2.  **بهبود `apkeep`:** اضافه کردن قابلیت استفاده از کوکی (بسیار حیاتی).
+3.  **اصلاح منطق `zip`:** در نسخه جدید، اگر `max_part_mb` وارد شود، از قابلیت `-s` استفاده شده و فایل‌های خروجی (که شامل `.z01` و غیره هستند) همگی به پوشه مقصد منتقل می‌شوند.
+4.  **فیلتر معماری ساده‌تر:** به جای پیچیدگی زیاد، فایل‌هایی که معماری آن‌ها با ورودی کاربر یکی نیست را حذف می‌کنیم.
+5.  **رفع مشکل پوشه‌بندی:** ساختار `git add` را به `downloads/` تغییر دادم تا کل پوشه مدیریت شود.
+
+### ⚠️ مرحله حیاتی برای شما (بدون این مرحله کار نمی‌کند):
+گوگل‌پلی اجازه دانلود مستقیم از سرورهای گیت‌هاب را نمی‌دهد. شما باید:
+1.  در مرورگر خود (Chrome) وارد اکانت گوگل شوید.
+2.  افزونه **Get cookies.txt LOCALLY** را نصب کنید.
+3.  در گوگل‌پلی، کوکی‌ها را اکسپورت کنید و متن آن را کپی کنید.
+
+در مخزن گیت‌هاب خود به مسیر Settings > Secrets and variables > Actions بروید.
+یک `New repository secret` بسازید:
+   Name: `GPLAY_COOKIES`
+   Value: (همان متن کوکی که کپی کردید)
