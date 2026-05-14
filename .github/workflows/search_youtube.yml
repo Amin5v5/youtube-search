@@ -1,14 +1,14 @@
-name: 'جستجوی یوتیوب با HTML'
+name: '🎬 جستجوی یوتیوب'
 
 on:
   workflow_dispatch:
     inputs:
       query:
-        description: 'عبارت جستجو (مثلاً: آموزش پایتون)'
+        description: '🔍 عبارت جستجو (مثلاً: آموزش پایتون)'
         required: true
         default: ''
       max_results:
-        description: 'تعداد نتایج'
+        description: '📊 تعداد نتایج'
         required: true
         default: '10'
         type: choice
@@ -19,7 +19,7 @@ on:
           - '50'
           - '100'
       upload_date:
-        description: 'تاریخ آپلود'
+        description: '📅 تاریخ آپلود'
         required: false
         default: 'any'
         type: choice
@@ -30,7 +30,7 @@ on:
           - 'month (این ماه)'
           - 'year (امسال)'
       type_filter:
-        description: 'نوع محتوا'
+        description: '🎞️ نوع محتوا'
         required: false
         default: 'any'
         type: choice
@@ -40,7 +40,7 @@ on:
           - 'channel (کانال)'
           - 'playlist (پلی‌لیست)'
       duration:
-        description: 'مدت‌زمان ویدیو'
+        description: '⏱️ مدت‌زمان ویدیو'
         required: false
         default: 'any'
         type: choice
@@ -49,7 +49,7 @@ on:
           - 'short (کوتاه < ۴ دقیقه)'
           - 'long (بلند > ۲۰ دقیقه)'
       features:
-        description: 'ویژگی‌های خاص'
+        description: '✨ ویژگی‌های خاص'
         required: false
         default: 'any'
         type: choice
@@ -65,7 +65,7 @@ on:
           - 'location'
           - 'purchased'
       sort_by:
-        description: 'مرتب‌سازی بر اساس'
+        description: '🔀 مرتب‌سازی بر اساس'
         required: false
         default: 'relevance'
         type: choice
@@ -75,6 +75,9 @@ on:
           - 'view_count (بازدید)'
           - 'rating (امتیاز)'
 
+permissions:
+  contents: write
+
 jobs:
   search:
     runs-on: ubuntu-latest
@@ -83,17 +86,17 @@ jobs:
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
-      - uses: actions/checkout@v4
+      - name: ⚡️ Checkout مخزن
+        uses: actions/checkout@v4
 
-      - name: نصب ابزارها
+      - name: 📦 نصب ابزارهای مورد نیاز
         run: |
-          sudo apt-get update
+          sudo apt-get update -qq
           sudo apt-get install -y jq
-          pip install yt-dlp
+          pip install -q yt-dlp
 
-      - name: ساخت کد SP فیلترها
+      - name: 🔧 ساخت کد SP فیلترها (برای جستجوی پیشرفته)
         run: |
-          # مپ کردن گزینه‌ها به پارامترهای sp یوتیوب
           declare -A UPLOAD_DATE_MAP=(
             ["any (همه)"]=""
             ["today (امروز)"]="EgIIAg%253D%253D"
@@ -131,14 +134,12 @@ jobs:
             ["rating (امتیاز)"]="CAE%253D"
           )
 
-          # دریافت مقادیر انتخاب‌شده
           UD="${{ github.event.inputs.upload_date }}"
           TYPE="${{ github.event.inputs.type_filter }}"
           DUR="${{ github.event.inputs.duration }}"
           FEAT="${{ github.event.inputs.features }}"
           SORT="${{ github.event.inputs.sort_by }}"
 
-          # ترکیب پارامترها (اولویت: آپلود > نوع > مدت > ویژگی > مرتب‌سازی)
           SP=""
           if [ -n "${UPLOAD_DATE_MAP[$UD]}" ]; then
             SP="${UPLOAD_DATE_MAP[$UD]}"
@@ -153,34 +154,35 @@ jobs:
           fi
 
           echo "SP=${SP}" >> $GITHUB_ENV
-          echo "SParam: ${SP:-none}"
+          echo "✅ پارامتر SP: ${SP:-none}"
 
-      - name: دریافت اطلاعات از یوتیوب
+      - name: 🎯 دریافت نتایج از یوتیوب (با yt-dlp)
         run: |
           MAX=${{ github.event.inputs.max_results }}
           QUERY="${{ github.event.inputs.query }}"
           
-          # اگر کاربر ytsearch را ننوشته، خودکار اضافه کن
           if [[ ! "$QUERY" =~ ^ytsearch[0-9]*: ]]; then
             QUERY="ytsearch${MAX}:${QUERY}"
           fi
           
-          echo "جستجو: $QUERY"
+          echo "🔍 عبارت جستجو: $QUERY"
           
-          # اضافه کردن پارامترهای جستجو (sp) در صورت وجود
           EXTRA_ARGS=""
           if [ -n "$SP" ]; then
             EXTRA_ARGS="--extractor-args \"youtube:search_params=${SP}\""
           fi
           
           eval "yt-dlp --flat-playlist --dump-json --playlist-end '$MAX' $EXTRA_ARGS '$QUERY' > data.json || echo '[]' > data.json"
+          
+          COUNT=$(jq -s 'length' data.json)
+          echo "✅ تعداد نتایج دریافتی: $COUNT"
 
-      - name: اجرای اسکریپت ساخت HTML
+      - name: 🌐 ساخت صفحه HTML (با جزئیات ویدیوها)
         env:
           REPO: ${{ github.repository }}
         run: python3 generate_youtube_html.py
 
-      - name: ذخیره در پوشه history
+      - name: 📁 ذخیره در پوشه تاریخچه (history)
         run: |
           QUERY="${{ github.event.inputs.query }}"
           DATE_PART=$(date +'%Y.%m.%d')
@@ -207,27 +209,39 @@ jobs:
           if [ -f search_results/index.html ]; then
             cp search_results/index.html "$DIR/"
           else
-            echo "<html><body><h1>خطا: فایل HTML ساخته نشد</h1></body></html>" > "$DIR/index.html"
+            echo "<html><body><h1>⚠️ خطا: فایل HTML ساخته نشد</h1></body></html>" > "$DIR/index.html"
           fi
           if [ -f data.json ]; then
             cp data.json "$DIR/"
           else
             echo "[]" > "$DIR/data.json"
           fi
-          echo "ذخیره در $DIR"
+          echo "✅ ذخیره در $DIR"
           echo "DIR=$DIR" >> $GITHUB_ENV
 
-      - name: رمزگذاری مسیر و نمایش لینک به فایل این جستجو
+      - name: 🔗 نمایش لینک‌های مشاهده و دانلود مستقیم HTML
         run: |
-          # اصلاح: safe='/' تا اسلش‌ها encode نشوند و لینک به درستی کار کند
           ENCODED_DIR=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${{ env.DIR }}', safe='/'))")
-          echo "### 📁 فایل این جستجو:" >> $GITHUB_STEP_SUMMARY
-          echo "[مشاهده فایل](https://github.com/${{ github.repository }}/blob/main/${ENCODED_DIR}/index.html)" >> $GITHUB_STEP_SUMMARY
+          echo "## 📁 نتایج این جستجو:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| شرح | لینک |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 👁️ مشاهده فایل | [مشاهده صفحه نتایج](https://github.com/${{ github.repository }}/blob/main/${ENCODED_DIR}/index.html) |" >> $GITHUB_STEP_SUMMARY
+          HTML_RAW_URL="https://github.com/${{ github.repository }}/raw/main/${ENCODED_DIR}/index.html"
+          echo "| ⬇️ دانلود این جستجو | [دانلود مستقیم HTML](${HTML_RAW_URL}) |" >> $GITHUB_STEP_SUMMARY
+          
+          # اضافه کردن جدول خلاصه (اختیاری)
+          COUNT=$(jq -s 'length' data.json 2>/dev/null || echo "0")
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 خلاصه جستجو" >> $GITHUB_STEP_SUMMARY
+          echo "- **عبارت جستجو:** ${{ github.event.inputs.query }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **تعداد نتایج:** ${COUNT}" >> $GITHUB_STEP_SUMMARY
+          echo "- **تاریخ اجرا:** $(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_STEP_SUMMARY
 
-      - name: ذخیره و آپلود نتایج
+      - name: 💾 ذخیره و آپلود نتایج در مخزن
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "bot@github.com"
           git add search_results/ data.json history/ 2>/dev/null || true
-          git commit -m "نتایج جستجوی یوتیوب: ${{ github.event.inputs.query }}" || echo "هیچ تغییری نبود"
+          git commit -m "✅ نتایج جستجوی یوتیوب: ${{ github.event.inputs.query }}" || echo "هیچ تغییری نبود"
           git push
