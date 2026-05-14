@@ -22,9 +22,9 @@ if os.path.exists('data_play.json') and os.path.getsize('data_play.json') > 0:
     try:
         with open('data_play.json', 'r', encoding='utf-8') as f:
             apps = [json.loads(line) for line in f if line.strip()]
-        print(f"خواندن {len(apps)} برنامه از فایل data_play.json")
+        print(f"خواندن {len(apps)} برنامه")
     except Exception as e:
-        print(f"خطا در خواندن فایل JSON: {e}")
+        print(f"خطا: {e}")
 
 def make_download_url(package_name):
     return (f"https://github.com/{download_owner}/{download_repo}/actions/workflows/{download_workflow}"
@@ -67,11 +67,7 @@ def generate_html():
     </style>
     <script>
         function copyLink(url) {{
-            navigator.clipboard.writeText(url).then(() => {{
-                alert('✅ لینک کپی شد!');
-            }}).catch(() => {{
-                prompt('لینک را کپی کنید:', url);
-            }});
+            navigator.clipboard.writeText(url).then(() => alert('✅ لینک کپی شد!')).catch(() => prompt('لینک را کپی کنید:', url));
         }}
     </script>
 </head>
@@ -85,7 +81,7 @@ def generate_html():
 
     cards_html = ""
     if not apps:
-        cards_html = '''<div style="grid-column: 1/-1; text-align: center; padding: 40px; font-size: 1.2rem; color: #666;">⚠️ هیچ نتیجه‌ای یافت نشد. لطفاً عبارت دیگری را امتحان کنید.</div>'''
+        cards_html = '<div style="grid-column:1/-1; text-align:center; padding:40px;">⚠️ هیچ نتیجه‌ای یافت نشد.</div>'
     else:
         for app_info in apps:
             try:
@@ -96,11 +92,7 @@ def generate_html():
                 url = f"https://play.google.com/store/apps/details?id={html.escape(app_id)}" if app_id else "#"
                 score = app_info.get('score', 0) or 0
                 size = app_info.get('size', 'نامشخص')
-                if size and size != 'نامشخص':
-                    size_display = str(size).replace('M', ' MB').replace('K', ' KB')
-                else:
-                    size_display = 'نامشخص'
-                
+                size_display = size.replace('M', ' MB').replace('K', ' KB') if size != 'نامشخص' else 'نامشخص'
                 icon_url = app_info.get('icon', '')
                 icon_b64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23cccccc'/%3E%3C/svg%3E"
                 if icon_url:
@@ -110,22 +102,21 @@ def generate_html():
                             image_data = resp.read()
                         b64 = base64.b64encode(image_data).decode('utf-8')
                         icon_b64 = f"data:image/png;base64,{b64}"
-                    except Exception:
+                    except:
                         pass
-
                 card = f'''
         <div class="card">
             <img class="icon" src="{icon_b64}" loading="lazy" alt="icon">
             <div class="info">
                 <div class="app-name">
                     <a href="{url}" target="_blank">{title}</a>
-                    <button class="copy-btn" onclick="copyLink('{url}')" title="کپی لینک گوگل‌پلی">📋</button>
+                    <button class="copy-btn" onclick="copyLink('{url}')">📋</button>
                 </div>
                 <div class="developer">{dev}</div>
                 <div class="meta">
-                    <span class="rating">⭐ {score}</span>
-                    <span class="install">📥 {installs}</span>
-                    <span class="size">💾 {size_display}</span>
+                    <span>⭐ {score}</span>
+                    <span>📥 {installs}</span>
+                    <span>💾 {size_display}</span>
                 </div>
                 <div class="action-btns">
                     <a href="{make_download_url(app_id)}" class="download-btn" target="_blank">⬇️ دانلود APK</a>
@@ -134,28 +125,21 @@ def generate_html():
         </div>'''
                 cards_html += card
             except Exception as e:
-                print(f"خطا در ساخت کارت: {e}")
-                continue
+                print(f"خطا: {e}")
 
     html_footer = f'''
     </div>
-    <div class="footer">
-        ساخته شده توسط GitHub Actions | آخرین به‌روزرسانی: {time.strftime('%Y-%m-%d %H:%M:%S')}
-    </div>
+    <div class="footer">تولید شده توسط GitHub Actions | {time.strftime('%Y-%m-%d %H:%M:%S')}</div>
 </div>
 </body>
 </html>'''
-
     return html_header + cards_html + html_footer
 
-print("شروع ساخت صفحه HTML...")
 os.makedirs(output_dir, exist_ok=True)
 try:
-    full_html = generate_html()
     with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(full_html)
-    size_kb = len(full_html.encode('utf-8')) / 1024
-    print(f"✅ صفحه HTML ذخیره شد. تعداد برنامه‌ها: {len(apps)} | حجم: {size_kb:.1f} KB")
+        f.write(generate_html())
+    print(f"✅ HTML ذخیره شد. تعداد: {len(apps)}")
 except Exception as e:
-    print(f"❌ خطا در ساخت صفحه: {e}")
+    print(f"خطا: {e}")
     traceback.print_exc()
