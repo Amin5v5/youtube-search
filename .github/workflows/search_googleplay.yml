@@ -26,17 +26,17 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-          filter: blob:none
 
-      - name: نصب کتابخانه
+      - name: نصب کتابخانه گوگل‌پلی
         run: pip install google-play-scraper
 
-      - name: دریافت اطلاعات کامل (شامل حجم) با مدیریت خطا
+      - name: دریافت اطلاعات از گوگل‌پلی (شامل حجم)
         run: |
+          python3 << 'EOF'
           import json, sys, time
           from google_play_scraper import search, app
 
@@ -47,16 +47,16 @@ jobs:
           try:
               results = search(query, n_hits=max_results, lang='fa', country='ir')
           except Exception as e:
-              print(f"⚠️ خطا در جستجو: {e}", file=sys.stderr)
+              print(f"خطا در جستجو: {e}", file=sys.stderr)
               results = []
 
+          # مرحله 2: دریافت جزئیات کامل (به ویژه حجم) برای هر نتیجه
           apps = []
-          # مرحله 2: دریافت جزئیات (حجم، امتیاز دقیق، نصب و...) برای هر نتیجه
           for item in results:
               app_id = item.get('appId')
               if not app_id:
                   continue
-              # تلاش برای دریافت اطلاعات کامل
+              # تلاش برای دریافت اطلاعات دقیق
               for attempt in range(3):
                   try:
                       details = app(app_id, lang='fa', country='ir')
@@ -74,7 +74,7 @@ jobs:
                   except Exception as e:
                       print(f"⚠️ تلاش {attempt+1} برای {app_id} ناموفق: {e}", file=sys.stderr)
                       if attempt == 2:
-                          # در صورت شکست نهایی، اطلاعات سطحی را ذخیره کن
+                          # در صورت شکست نهایی، اطلاعات سطحی را ذخیره کن (بدون حجم)
                           apps.append({
                               "title": item.get("title", "بدون نام"),
                               "developer": item.get("developer", "نامشخص"),
@@ -86,16 +86,17 @@ jobs:
                               "size": "نامشخص"
                           })
                       time.sleep(2)
-              time.sleep(0.5)  # تأخیر بین درخواست‌ها
+              time.sleep(0.5)  # تأخیر بین برنامه‌ها
 
           # ذخیره در فایل JSON
           with open('data_play.json', 'w', encoding='utf-8') as f:
               for app_info in apps:
                   f.write(json.dumps(app_info, ensure_ascii=False) + '\n')
 
-          print(f"✅ تعداد نتایج نهایی: {len(apps)}")
+          print(f"✅ تعداد نتایج با جزئیات کامل: {len(apps)}")
+          EOF
 
-      - name: اجرای اسکریپت ساخت HTML (نمایش حجم و لینک دانلود)
+      - name: اجرای اسکریپت ساخت HTML (نمایش حجم)
         env:
           REPO: ${{ github.repository }}
         run: python3 generate_googleplay_html.py
@@ -136,7 +137,7 @@ jobs:
           echo "ذخیره در $DIR"
           echo "DIR=$DIR" >> $GITHUB_ENV
 
-      - name: نمایش لینک فایل HTML و دانلود مستقیم JSON
+      - name: نمایش لینک فایل HTML و لینک دانلود مستقیم JSON
         run: |
           ENCODED_DIR=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${{ env.DIR }}', safe='/'))")
           echo "### 📁 نتایج این جستجو:" >> $GITHUB_STEP_SUMMARY
@@ -148,6 +149,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "bot@github.com"
-          git add search_results/ data_play.json history/
+          git add search_results/ data_play.json history/ 2>/dev/null || true
           git commit -m "نتایج جستجوی گوگل‌پلی: ${{ github.event.inputs.query }}" || echo "هیچ تغییری نبود"
           git push
