@@ -33,11 +33,7 @@
     <script>
         function copyLink(url) {
             navigator.clipboard.writeText(url).then(() => {
-                var toast = document.createElement('div');
-                toast.textContent = '✅ لینک کپی شد!';
-                toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:white;padding:10px 20px;border-radius:20px;z-index:9999;opacity:1;transition:opacity 0.5s;';
-                document.body.appendChild(toast);
-                setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 1500);
+                alert('لینک کپی شد!');
             }).catch(() => {
                 prompt('لینک را کپی کنید:', url);
             });
@@ -50,130 +46,10 @@
     <div class="search-btn">
         <a href="https://github.com/Amin5v5/search/actions/workflows/search_youtube.yml" target="_blank">➕ جستجوی جدید</a>
     </div>
-    <div class="results">
-        <div class="video-card">
-            <img class="thumbnail" src="https://i.ytimg.com/vi/nI7xPLApG40/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLDAvj5EJy3jUmnUrr1qFhVdvLlgCA" alt="thumbnail" onerror="this.style.display='none'">
-            <div class="info">
-                <div class="title">
-                    <a href="https://www.youtube.com/watch?v=nI7xPLApG40" target="_blank">تست جهانی ولورانت موبایل اومد ( 2026 ) گرافیک و بهینه سازی جدید ( سیستم مورد نیاز )</a>
-                    <button class="copy-btn" onclick="copyLink('https://www.youtube.com/watch?v=nI7xPLApG40')" title="کپی لینک ویدئو">📋</button>
-                </div>
-                <div class="channel">BXS</div>
-                <div class="meta">⏱ 513.0 | 👁 1948</div>
-                <a href="https://github.com/Amin5v5/download/actions/workflows/youtube-download.yml?video_url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DnI7xPLApG40&output_format=mp4+%28video%29&desired_quality=720p&max_part_mb=90&upload_method=repository+%28push+to+repo%29" target="_blank"><button class="download-btn">⬇️ دانلود</button></a>
-            </div>
-        </div>
-        <div class="video-card">
-            <img class="thumbnail" src="https://i.ytimg.com/vi/XzqVvUTf6z4/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLD6SfJWHewhsaWMHfLaVIcgCKmRvA" alt="thumbnail" onerror="this.style.display='none'">
-            <div class="info">
-                <div class="title">
-                    <a href="https://www.youtube.com/watch?v=XzqVvUTf6z4" target="_blank">آموزش نصب ولورانت موبایل ( نسخه نهایی ) اولین گیم پلی از نسخه جهانی؟ آموزش ورود و گیم پلی بازی</a>
-                    <button class="copy-btn" onclick="copyLink('https://www.youtube.com/watch?v=XzqVvUTf6z4')" title="کپی لینک ویدئو">📋</button>
-                </div>
-                <div class="channel">BXS</div>
-                <div class="meta">⏱ 482.0 | 👁 3661</div>
-                <a href="https://github.com/Amin5v5/download/actions/workflows/youtube-download.yml?video_url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DXzqVvUTf6z4&output_format=mp4+%28video%29&desired_quality=720p&max_part_mb=90&upload_method=repository+%28push+to+repo%29" target="_blank"><button class="download-btn">⬇️ دانلود</button></a>
-            </div>
-        </div>
-        <div class="video-card">
-            <img class="thumbnail" src="https://i.ytimg.com/vi/v4bvYIfOvj4/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLD8Aod2_GGV6CY9fTKUrGC3mYiFrA" alt="thumbnail" onerror="this.style.display='none'">
-            <div class="info">
-                <div class="title">
-                    <a href="https://www.youtube.com/watch?v=v4bvYIfOvj4" target="_blank">#1 Player Valorant Mobile Ranked Gameplay 🔥 Full Match</a>
-                    <button class="copy-btn" onclick="copyLink('https://www.youtube.com/watch?v=v4bvYIfOvj4')" title="کپی لینک ویدئو">📋</button>
-                </div>
-                <div class="channel">Kybe</div>
-                <div class="meta">⏱ 745.0 | 👁 56875</div>
-                <a href="https://github.com/Amin5v5/download/actions/workflows/youtube-download.yml?video_url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3Dv4bvYIfOvj4&output_format=mp4+%28video%29&desired_quality=720p&max_part_mb=90&upload_method=repository+%28push+to+repo%29" target="_blank"><button class="download-btn">⬇️ دانلود</button></a>
-            </div>
-        </div>
-        <div class="video-card">
-            <img class="thumbnail" src="https://i.ytimg.com/vi/HEWEAJBi5ec/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLBF62RWq54xeMwbcytNhe-heFjb4g" alt="thumbnail" onerror="this.style.display='none'">
-            <div class="info">
-                <div class="title">
-                    <a href="https://www.youtube.com/watch?v=HEWEAJBi5ec" target="_blank">عرضه ناگهانی بتای ولورانت موبایل valorant mobile</a>
-                    <button class="copy-btn" onclick="copyLink('https://www.youtube.com/watch?v=HEWEAJBi5ec')" title="کپی لینک ویدئو">📋</button>
-                </div>
-                <div class="channel">AZ.PARADOX</div>
-                <div class="meta">⏱ 693.0 | 👁 851</div>
-                <a href="https://github.com/Amin5v5/download/actions/workflows/youtube-download.yml?video_url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DHEWEAJBi5ec&output_format=mp4+%28video%29&desired_quality=720p&max_part_mb=90&upload_method=repository+%28push+to+repo%29" target="_blank"><button class="download-btn">⬇️ دانلود</button></a>
-            </div>
-        </div>
-        <div class="video-card">
-            <img class="thumbnail" src="https://i.ytimg.com/vi/X7EyUxffMwc/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLAwoILfMGvU2RDQo3mqtb5rGyVI-w" alt="thumbnail" onerror="this.style.display='none'">
-            <div class="info">
-                <div class="title">
-                    <a href="https://www.youtube.com/watch?v=X7EyUxffMwc" target="_blank">طريقة تحميل فالورانت موبايل النسخة العالمية😻🚨 |Valorant mobile </a>
-                    <button class="copy-btn" onclick="copyLink('https://www.youtube.com/watch?v=X7EyUxffMwc')" title="کپی لینک ویدئو">📋</button>
-                </div>
-                <div class="channel">STARK 84</div>
-                <div class="meta">⏱ 390.0 | 👁 21918</div>
-                <a href="https://github.com/Amin5v5/download/actions/workflows/youtube-download.yml?video_url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DX7EyUxffMwc&output_format=mp4+%28video%29&desired_quality=720p&max_part_mb=90&upload_method=repository+%28push+to+repo%29" target="_blank"><button class="download-btn">⬇️ دانلود</button></a>
-            </div>
-        </div>
-        <div class="video-card">
-            <img class="thumbnail" src="https://i.ytimg.com/vi/8qaXOiG5D4o/hqdefault.jpg?sqp=-oaymwEcCOADEI4CSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLBkQZj5MuoTKeL1AVOOpy7k6Tfh_g" alt="thumbnail" onerror="this.style.display='none'">
-            <div class="info">
-                <div class="title">
-                    <a href="https://www.youtube.com/watch?v=8qaXOiG5D4o" target="_blank">هي دي أجمد لعبة حاليا Valorant Mobile | الجرافيكس هيبهرك ! 🎮</a>
-                    <button class="copy-btn" onclick="copyLink('https://www.youtube.com/watch?v=8qaXOiG5D4o')" title="کپی لینک ویدئو">📋</button>
-                </div>
-                <div class="channel">الحريف - TECH</div>
-                <div class="meta">⏱ 339.0 | 👁 52098</div>
-                <a href="https://github.com/Amin5v5/download/actions/workflows/youtube-download.yml?video_url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3D8qaXOiG5D4o&output_format=mp4+%28video%29&desired_quality=720p&max_part_mb=90&upload_method=repository+%28push+to+repo%29" target="_blank"><button class="download-btn">⬇️ دانلود</button></a>
-            </div>
-        </div>
-        <div class="video-card">
-            <img class="thumbnail" src="https://i.ytimg.com/vi/QM3ULzrrbYY/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLDV5K-nOBGLzqgGGmiSxTYULNY4Bg" alt="thumbnail" onerror="this.style.display='none'">
-            <div class="info">
-                <div class="title">
-                    <a href="https://www.youtube.com/watch?v=QM3ULzrrbYY" target="_blank">اموزش نصب بازی ولورانت موبایل 🤩 hyper front (Valorant mobile )</a>
-                    <button class="copy-btn" onclick="copyLink('https://www.youtube.com/watch?v=QM3ULzrrbYY')" title="کپی لینک ویدئو">📋</button>
-                </div>
-                <div class="channel">Reytor Sr</div>
-                <div class="meta">⏱ 143.0 | 👁 187</div>
-                <a href="https://github.com/Amin5v5/download/actions/workflows/youtube-download.yml?video_url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DQM3ULzrrbYY&output_format=mp4+%28video%29&desired_quality=720p&max_part_mb=90&upload_method=repository+%28push+to+repo%29" target="_blank"><button class="download-btn">⬇️ دانلود</button></a>
-            </div>
-        </div>
-        <div class="video-card">
-            <img class="thumbnail" src="https://i.ytimg.com/vi/bC0MBu4J5kU/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLB5b1V_yCXiXezICWDDukDxgpiGFg" alt="thumbnail" onerror="this.style.display='none'">
-            <div class="info">
-                <div class="title">
-                    <a href="https://www.youtube.com/watch?v=bC0MBu4J5kU" target="_blank">This is VALORANT Mobile ❤️⚡️</a>
-                    <button class="copy-btn" onclick="copyLink('https://www.youtube.com/watch?v=bC0MBu4J5kU')" title="کپی لینک ویدئو">📋</button>
-                </div>
-                <div class="channel">Aztro FPS</div>
-                <div class="meta">⏱ 34.0 | 👁 540649</div>
-                <a href="https://github.com/Amin5v5/download/actions/workflows/youtube-download.yml?video_url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DbC0MBu4J5kU&output_format=mp4+%28video%29&desired_quality=720p&max_part_mb=90&upload_method=repository+%28push+to+repo%29" target="_blank"><button class="download-btn">⬇️ دانلود</button></a>
-            </div>
-        </div>
-        <div class="video-card">
-            <img class="thumbnail" src="https://i.ytimg.com/vi/kA_FKoNrNFY/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLCSqiMbseJ8smASd1I5Zu77jX1rjA" alt="thumbnail" onerror="this.style.display='none'">
-            <div class="info">
-                <div class="title">
-                    <a href="https://www.youtube.com/watch?v=kA_FKoNrNFY" target="_blank">VALORANT MOBILE 2026 GLOBAL UPDATE! (iOS/ Android)</a>
-                    <button class="copy-btn" onclick="copyLink('https://www.youtube.com/watch?v=kA_FKoNrNFY')" title="کپی لینک ویدئو">📋</button>
-                </div>
-                <div class="channel">Sonho</div>
-                <div class="meta">⏱ 527.0 | 👁 65954</div>
-                <a href="https://github.com/Amin5v5/download/actions/workflows/youtube-download.yml?video_url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DkA_FKoNrNFY&output_format=mp4+%28video%29&desired_quality=720p&max_part_mb=90&upload_method=repository+%28push+to+repo%29" target="_blank"><button class="download-btn">⬇️ دانلود</button></a>
-            </div>
-        </div>
-        <div class="video-card">
-            <img class="thumbnail" src="https://i.ytimg.com/vi/b-7qrfjsPGQ/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLBMwDucnuBT64_cM7xqErs6pYsJew" alt="thumbnail" onerror="this.style.display='none'">
-            <div class="info">
-                <div class="title">
-                    <a href="https://www.youtube.com/watch?v=b-7qrfjsPGQ" target="_blank">گیم پلی نسخه جهانی ولورانت موبایل ( 120 اف پی اس ) آموزش نصب و ورود به نسخه جدید ( سیستم مورد نیاز )</a>
-                    <button class="copy-btn" onclick="copyLink('https://www.youtube.com/watch?v=b-7qrfjsPGQ')" title="کپی لینک ویدئو">📋</button>
-                </div>
-                <div class="channel">BXS</div>
-                <div class="meta">⏱ 547.0 | 👁 2281</div>
-                <a href="https://github.com/Amin5v5/download/actions/workflows/youtube-download.yml?video_url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3Db-7qrfjsPGQ&output_format=mp4+%28video%29&desired_quality=720p&max_part_mb=90&upload_method=repository+%28push+to+repo%29" target="_blank"><button class="download-btn">⬇️ دانلود</button></a>
-            </div>
-        </div>
+    <div class="results"><div style="text-align: center; padding: 40px; color: #666;">⚠️ نتیجه‌ای یافت نشد.</div>
     </div>
     <div class="footer">
-        ساخته شده توسط GitHub Actions | 2026-05-14 08:50:21
+        ساخته شده توسط GitHub Actions | 2026-05-14 09:06:58
     </div>
 </div>
 </body>
