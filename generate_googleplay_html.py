@@ -9,7 +9,7 @@ import traceback
 repo = os.environ.get('REPO', '')
 download_owner = 'Amin5v5'
 download_repo = 'download'
-download_workflow = 'Google_Play_Downloader.yml'  # نام فایل workflow دانلود شما
+download_workflow = 'Google_Play_Downloader.yml'
 default_arch = 'arm64-v8a'
 default_part_mb = 90
 
@@ -87,7 +87,7 @@ def generate_html():
     if not apps:
         cards_html = '''<div style="grid-column: 1/-1; text-align: center; padding: 40px; font-size: 1.2rem; color: #666;">⚠️ هیچ نتیجه‌ای یافت نشد. لطفاً عبارت دیگری را امتحان کنید.</div>'''
     else:
-        for i, app_info in enumerate(apps):
+        for app_info in apps:
             try:
                 title = html.escape(str(app_info.get('title', 'بدون نام')))
                 dev = html.escape(str(app_info.get('developer', 'نامشخص')))
@@ -110,8 +110,8 @@ def generate_html():
                             image_data = resp.read()
                         b64 = base64.b64encode(image_data).decode('utf-8')
                         icon_b64 = f"data:image/png;base64,{b64}"
-                    except Exception as e:
-                        print(f"اخطار: دانلود آیکون برای {app_id} شکست خورد. از placeholder استفاده می‌شود.")
+                    except Exception:
+                        pass
 
                 card = f'''
         <div class="card">
@@ -134,7 +134,7 @@ def generate_html():
         </div>'''
                 cards_html += card
             except Exception as e:
-                print(f"خطا در ساخت کارت برای برنامه {i}: {e}")
+                print(f"خطا در ساخت کارت: {e}")
                 continue
 
     html_footer = f'''
@@ -149,25 +149,13 @@ def generate_html():
     return html_header + cards_html + html_footer
 
 print("شروع ساخت صفحه HTML...")
+os.makedirs(output_dir, exist_ok=True)
 try:
     full_html = generate_html()
-    full_html = full_html.encode('utf-8', errors='ignore').decode('utf-8')
+    with open(output_file, 'w', encoding='utf-8') as f:
+        f.write(full_html)
+    size_kb = len(full_html.encode('utf-8')) / 1024
+    print(f"✅ صفحه HTML ذخیره شد. تعداد برنامه‌ها: {len(apps)} | حجم: {size_kb:.1f} KB")
 except Exception as e:
-    print(f"خطای مرگبار در ساخت صفحه: {e}")
+    print(f"❌ خطا در ساخت صفحه: {e}")
     traceback.print_exc()
-    error_msg = html.escape(f"خطای مرگبار در ساخت صفحه: {e}\n{traceback.format_exc()}")
-    full_html = f"""<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head><meta charset="UTF-8"><title>خطا</title></head>
-<body dir="rtl" style="padding:40px; font-family: Tahoma;">
-    <h1 style="color:red;">⚠️ خطا در ساخت صفحه</h1>
-    <pre style="background:#f5f5f5; padding:20px; border-radius:8px; white-space: pre-wrap; word-wrap: break-word;">{error_msg}</pre>
-</body>
-</html>"""
-
-os.makedirs(output_dir, exist_ok=True)
-with open(output_file, 'w', encoding='utf-8') as f:
-    f.write(full_html)
-
-size_kb = len(full_html.encode('utf-8')) / 1024
-print(f"✅ صفحه گوگل‌پلی با موفقیت در {output_file} ذخیره شد. تعداد برنامه‌ها: {len(apps)} | حجم فایل: {size_kb:.1f} KB")
