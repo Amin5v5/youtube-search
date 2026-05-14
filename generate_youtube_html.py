@@ -7,7 +7,7 @@ import html
 repo = os.environ.get('REPO', '')
 download_owner = 'Amin5v5'
 download_repo = 'download'
-download_workflow = 'youtube-download.yml'   # نام دقیق فایل workflow
+download_workflow = 'youtube-download.yml'
 
 default_format = 'mp4 (video)'
 default_quality = '720p'
@@ -29,12 +29,24 @@ def make_download_url(video_url):
     return base + '?' + urllib.parse.urlencode(params, safe='')
 
 videos = []
-if os.path.exists('data_youtube.json') and os.path.getsize('data_youtube.json') > 0:
-    try:
-        with open('data_youtube.json', 'r', encoding='utf-8') as f:
-            videos = [json.loads(line) for line in f if line.strip()]
-    except Exception as e:
-        print(f"خطا در خواندن JSON: {e}")
+# اولویت با data_youtube.json، سپس data.json (خروجی workflow فعلی)
+for fname in ('data_youtube.json', 'data.json'):
+    if os.path.exists(fname) and os.path.getsize(fname) > 0:
+        try:
+            with open(fname, 'r', encoding='utf-8') as f:
+                content = f.read().strip()
+                if content.startswith('['):
+                    videos = json.loads(content)
+                else:
+                    videos = [json.loads(line) for line in content.splitlines() if line.strip()]
+            print(f"خواندن {len(videos)} ویدئو از {fname}")
+            break
+        except Exception as e:
+            print(f"خطا در خواندن {fname}: {e}")
+            videos = []
+
+if not videos:
+    print("⚠️ هیچ داده‌ای برای ساخت صفحه وجود ندارد.")
 
 def generate_html():
     html_header = f'''<!DOCTYPE html>
@@ -72,7 +84,11 @@ def generate_html():
     <script>
         function copyLink(url) {{
             navigator.clipboard.writeText(url).then(() => {{
-                alert('لینک کپی شد!');
+                var toast = document.createElement('div');
+                toast.textContent = '✅ لینک کپی شد!';
+                toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:white;padding:10px 20px;border-radius:20px;z-index:9999;opacity:1;transition:opacity 0.5s;';
+                document.body.appendChild(toast);
+                setTimeout(() => {{ toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }}, 1500);
             }}).catch(() => {{
                 prompt('لینک را کپی کنید:', url);
             }});
@@ -94,12 +110,11 @@ def generate_html():
         for v in videos:
             try:
                 title = html.escape(str(v.get('title', 'بدون عنوان')))
-                channel = html.escape(str(v.get('channel', 'نامشخص')))
-                duration = html.escape(str(v.get('duration', '')))
-                views = html.escape(str(v.get('views', '')))
-                thumb = v.get('thumbnail', '')
-                video_url = v.get('url', '')
-
+                channel = html.escape(str(v.get('channel', v.get('uploader', 'نامشخص'))))
+                duration = str(v.get('duration', ''))
+                views = str(v.get('view_count', v.get('views', '')))
+                thumb = v.get('thumbnail', v.get('thumbnails', [{}])[-1].get('url', ''))
+                video_url = v.get('webpage_url', v.get('url', ''))
                 download_link = make_download_url(video_url)
 
                 card = f'''
