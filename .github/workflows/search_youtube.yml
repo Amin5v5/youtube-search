@@ -1,4 +1,4 @@
-name: '🎬 جستجوی یوتیوب با HTML'
+name: '🎬 جستجوی یوتیوب'
 
 on:
   workflow_dispatch:
