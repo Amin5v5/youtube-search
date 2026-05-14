@@ -199,8 +199,8 @@ jobs:
           done
           mkdir -p "$DIR"
           
-          if [ -f search_results/youtube/index.html ]; then
-            cp search_results/youtube/index.html "$DIR/"
+          if [ -f search_results/index.html ]; then
+            cp search_results/index.html "$DIR/"
           else
             echo "<html><body><h1>خطا: فایل HTML ساخته نشد</h1></body></html>" > "$DIR/index.html"
           fi
