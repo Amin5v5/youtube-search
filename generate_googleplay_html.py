@@ -9,7 +9,7 @@ import traceback
 repo = os.environ.get('REPO', '')
 download_owner = 'Amin5v5'
 download_repo = 'download'
-download_workflow = 'download-googleplay.yml'
+download_workflow = 'Google_Play_Downloader.yml'  # نام فایل workflow دانلود شما
 default_arch = 'arm64-v8a'
 default_part_mb = 90
 
@@ -60,7 +60,7 @@ def generate_html():
         .install {{ color: #4285f4; }}
         .size {{ color: #0f9d58; }}
         .action-btns {{ margin-top: 8px; }}
-        .download-btn {{ background: #34a853; color: white; border: none; cursor: pointer; font-size: 0.9rem; padding: 6px 12px; border-radius: 6px; transition: 0.2s; text-decoration: none; display: inline-block; font-weight: bold; }}
+        .download-btn {{ background: #34a853; color: white; border: none; cursor: pointer; font-size: 0.9rem; padding: 6px 12px; border-radius: 6px; text-decoration: none; display: inline-block; font-weight: bold; }}
         .download-btn:hover {{ background: #2d9147; }}
         .footer {{ text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #888; font-size: 0.8rem; }}
         @media (max-width: 600px) {{ .results {{ grid-template-columns: 1fr; }} }}
@@ -96,7 +96,6 @@ def generate_html():
                 url = f"https://play.google.com/store/apps/details?id={html.escape(app_id)}" if app_id else "#"
                 score = app_info.get('score', 0) or 0
                 size = app_info.get('size', 'نامشخص')
-                # نمایش حجم به صورت خوانا
                 if size and size != 'نامشخص':
                     size_display = str(size).replace('M', ' MB').replace('K', ' KB')
                 else:
